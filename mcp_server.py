@@ -176,9 +176,10 @@ def get_topic_sources(topic: str) -> str:
 
     lines = [f"## Sources for: {topic}", "", f"{len(sources)} source(s) found:", ""]
     for s in sources:
-        lines.append(f"- **[{s['platform']}]** {s['title']}")
         if s.get("url"):
-            lines.append(f"  {s['url']}")
+            lines.append(f"- **[{s['platform']}]** [{s['title']}]({s['url']})")
+        else:
+            lines.append(f"- **[{s['platform']}]** {s['title']}")
     return "\n".join(lines)
 
 
