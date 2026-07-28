@@ -1,0 +1,17 @@
+# Site/brand settings — edit these to point this tool at your own blog/niche.
+# Nothing here is secret; API keys still go in .env.
+
+brand:
+  name: "Wayzyy"
+  blog_url: "https://wayzyy.com"
+  contact_email: "hello@wayzyy.com"
+  niche: "Goa travel"
+  # Appended to image searches and a few prompts to keep content on-location
+  location_keyword: "Goa"
+  # What you're actually offering — used in the closing CTA line.
+  offering: "villa or vacation rental"
+  offering_plural: "villas, beach houses, and homestays"
+
+# Where your actual website's source code lives, for push_to_github.
+# Must be a git repo with an "origin" remote you can push to.
+site_repo_path: "/Users/akshay/.gemini/antigravity-ide/scratch/wayzyy-site"

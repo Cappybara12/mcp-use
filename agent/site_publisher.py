@@ -23,7 +23,12 @@ from pathlib import Path
 
 import requests
 
-WAYZYY_SITE_DIR = Path("/Users/akshay/.gemini/antigravity-ide/scratch/wayzyy-site")
+from agent.config import load_config
+
+_cfg = load_config()
+WAYZYY_SITE_DIR = Path(_cfg["site_repo_path"])
+BRAND_NAME = _cfg["brand"]["name"]
+BLOG_URL = _cfg["brand"]["blog_url"]
 
 
 def _find_ssh_auth_sock() -> str | None:
@@ -319,7 +324,7 @@ def add_sitemap_entry(slug: str) -> None:
     content = path.read_text()
 
     entry = f'''  <url>
-    <loc>https://wayzyy.com/blog/{slug}</loc>
+    <loc>{BLOG_URL}/blog/{slug}</loc>
     <lastmod>{datetime.now().strftime("%Y-%m-%d")}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

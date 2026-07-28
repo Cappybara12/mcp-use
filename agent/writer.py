@@ -11,6 +11,9 @@ from openai import OpenAI
 from prompts.style_guide import STYLE_GUIDE_SYSTEM_PROMPT
 from agent.utils import with_retry, call_with_fallback
 from agent.section_checker import check_section, build_fix_prompt
+from agent.config import load_config
+
+_brand = load_config()["brand"]
 
 
 SECTION_WRITER_PROMPT = """
@@ -155,38 +158,46 @@ Write the FAQ section now:
 """
 
 FINAL_THOUGHTS_PROMPT = """
-You are writing the final section of a Goa travel article for Wayzyy.
+You are writing the final section of a {niche} article for {brand_name}.
 
-ARTICLE TITLE: {title}
-TOPIC: {topic}
+ARTICLE TITLE: {{title}}
+TOPIC: {{topic}}
 
 RESEARCH BRIEF:
-{research_brief}
+{{research_brief}}
 
 ARTICLE SUMMARY (what was covered):
-{article_summary}
+{{article_summary}}
 
 ---
 
 Write a "Final Thoughts" section.
 
 RULES:
-- H2: ## Final Thoughts: Is {topic} Worth It?  (adapt to topic)
+- H2: ## Final Thoughts: Is {{topic}} Worth It?  (adapt to topic)
 - 150-200 words
 - End with a clear recommendation — who should go, who shouldn't
 - Do NOT start with "In conclusion" or "To summarize"
 - End with a confident opinion, not a hedge
-- After Final Thoughts, add the Wayzyy CTA:
+- After Final Thoughts, add the {brand_name} CTA:
 
 ---
-*Looking for a villa or vacation rental in Goa? Wayzyy helps you discover verified stays —
-villas, beach houses, and homestays — with transparent pricing and direct host access.
-[Browse Goa villas on Wayzyy →](https://wayzyy.com)*
+*Looking for a {offering} in {location_keyword}? {brand_name} helps you discover verified stays —
+{offering_plural} — with transparent pricing and direct host access.
+[Browse {location_keyword} villas on {brand_name} →]({blog_url})*
 
-*Want to list your property on Wayzyy? Email us at hello@wayzyy.com — Wayzyy is launching soon in Goa.*
+*Want to list your property on {brand_name}? Email us at {contact_email} — {brand_name} is launching soon in {location_keyword}.*
 
 Write the Final Thoughts section now:
-"""
+""".format(
+    niche=_brand["niche"],
+    brand_name=_brand["name"],
+    location_keyword=_brand["location_keyword"],
+    blog_url=_brand["blog_url"],
+    contact_email=_brand["contact_email"],
+    offering=_brand["offering"],
+    offering_plural=_brand["offering_plural"],
+)
 
 
 WRITER_MODEL = "kimi-k2.7-code-highspeed"
