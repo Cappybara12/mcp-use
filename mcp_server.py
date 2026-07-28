@@ -174,10 +174,25 @@ def get_topic_sources(topic: str) -> str:
     if not sources:
         return f"No sources found for a topic matching '{topic}'. Use list_pending_topics or suggest_next_article to see exact topic names."
 
+    # News RSS URLs are Google's own redirect wrapper, not the real article —
+    # decode them to the actual publisher URL. Local + network only, no LLM.
+    try:
+        from googlenewsdecoder import gnewsdecoder
+    except ImportError:
+        gnewsdecoder = None
+
     lines = [f"## Sources for: {topic}", "", f"{len(sources)} source(s) found:", ""]
     for s in sources:
-        if s.get("url"):
-            lines.append(f"- **[{s['platform']}]** [{s['title']}]({s['url']})")
+        url = s.get("url", "")
+        if url and "news.google.com" in url and gnewsdecoder:
+            try:
+                result = gnewsdecoder(url, interval=1)
+                if result.get("status"):
+                    url = result["decoded_url"]
+            except Exception as e:
+                print(f"[get_topic_sources] Failed to decode {url}: {e}", file=sys.stderr)
+        if url:
+            lines.append(f"- **[{s['platform']}]** [{s['title']}]({url})")
         else:
             lines.append(f"- **[{s['platform']}]** {s['title']}")
     return "\n".join(lines)
