@@ -49,7 +49,7 @@ def _get_known_sources_for_topic(topic: str) -> list[dict]:
         if topic not in content:
             continue
         sources = []
-        for m in re.finditer(r"^- \[(\w+)\] \[([^\]]+)\]\(([^)]+)\)", content, re.MULTILINE):
+        for m in re.finditer(r"^- \[([^\]]+)\] \[([^\]]+)\]\(([^)]+)\)", content, re.MULTILINE):
             platform, title, url = m.groups()
             sources.append({"platform": platform, "title": title, "url": url})
         if sources:
@@ -829,7 +829,7 @@ def suggest_next_article() -> str:
     def extract_sample_signals(body: str, limit: int = 2) -> list[str]:
         """Pull real source titles out of the '## Trend Sources' section."""
         signals = []
-        for m in re.finditer(r"^- \[(\w+)\] \[([^\]]+)\]\(([^)]+)\)", body, re.MULTILINE):
+        for m in re.finditer(r"^- \[([^\]]+)\] \[([^\]]+)\]\(([^)]+)\)", body, re.MULTILINE):
             platform, title, _url = m.groups()
             title = title[:70] + ("…" if len(title) > 70 else "")
             signals.append(f"[{platform}] {title}")
