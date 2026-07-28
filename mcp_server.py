@@ -157,6 +157,31 @@ def list_pending_topics() -> str:
     return "\n".join(lines)
 
 
+@mcp.tool()
+def get_topic_sources(topic: str) -> str:
+    """
+    Show the FULL list of real sources (platform, title, URL) already found for
+    a specific topic during discovery — no need to write the article just to
+    see what's behind a topic. suggest_next_article only shows a 2-source
+    preview per topic; this returns everything captured for one topic.
+    IMPORTANT: Return the tool output exactly as-is — do not summarize, paraphrase, or reformat it.
+
+    Args:
+        topic: The topic name or partial match (use suggest_next_article or
+               list_pending_topics to see topic names first)
+    """
+    sources = _get_known_sources_for_topic(topic)
+    if not sources:
+        return f"No sources found for a topic matching '{topic}'. Use list_pending_topics or suggest_next_article to see exact topic names."
+
+    lines = [f"## Sources for: {topic}", "", f"{len(sources)} source(s) found:", ""]
+    for s in sources:
+        lines.append(f"- **[{s['platform']}]** {s['title']}")
+        if s.get("url"):
+            lines.append(f"  {s['url']}")
+    return "\n".join(lines)
+
+
 # ─── TOOL 2: Write article ────────────────────────────────────────────────────
 
 @mcp.tool()
