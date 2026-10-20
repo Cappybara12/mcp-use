@@ -200,11 +200,13 @@ Write the Final Thoughts section now:
 )
 
 
-WRITER_MODEL = "kimi-k2.7-code-highspeed"
+WRITER_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.5") if os.environ.get("OPENAI_API_KEY") else "kimi-k2.7-code-highspeed"
 FALLBACK_MODEL = "llama-3.3-70b-versatile"
 
 
 def get_deepseek_client() -> OpenAI:
+    if os.environ.get("OPENAI_API_KEY"):
+        return OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     return OpenAI(
         api_key=os.environ["KIMI_API_KEY"],
         base_url="https://api.moonshot.ai/v1",
