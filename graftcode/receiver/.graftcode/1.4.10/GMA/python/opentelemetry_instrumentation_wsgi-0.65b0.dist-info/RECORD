@@ -1,0 +1,12 @@
+opentelemetry/instrumentation/wsgi/__init__.py,sha256=39XUxhOMaBJYcT0X6y0Ys2HNDY-IGfNztsvU_4DCNQ8,27328
+opentelemetry/instrumentation/wsgi/__pycache__/__init__.cpython-312.pyc,,
+opentelemetry/instrumentation/wsgi/__pycache__/package.cpython-312.pyc,,
+opentelemetry/instrumentation/wsgi/__pycache__/version.cpython-312.pyc,,
+opentelemetry/instrumentation/wsgi/package.py,sha256=3UvIXUf6ge0CiOB37GrnLDECup3BSMugS9rRCxBY61s,210
+opentelemetry/instrumentation/wsgi/py.typed,sha256=47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU,0
+opentelemetry/instrumentation/wsgi/version.py,sha256=-Rf_XkVgjzBGXkth6rg5g0wlRe89UiHM9N5QtCtYKW0,100
+opentelemetry_instrumentation_wsgi-0.65b0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
+opentelemetry_instrumentation_wsgi-0.65b0.dist-info/METADATA,sha256=o7Nk5rOJqJ2Tt85zVk1cfy84dBNE5iVIl8MjrKSlWfM,2116
+opentelemetry_instrumentation_wsgi-0.65b0.dist-info/RECORD,,
+opentelemetry_instrumentation_wsgi-0.65b0.dist-info/WHEEL,sha256=lCkmxWfQsSc9CfIClYeavTdQeEX2toPqufh9gI35EQA,87
+opentelemetry_instrumentation_wsgi-0.65b0.dist-info/licenses/LICENSE,sha256=xx0jnfkXJvxRnG63LTGOxlggYnIysveWIZ6H3PNdCrQ,11357

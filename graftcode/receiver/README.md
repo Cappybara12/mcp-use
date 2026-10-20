@@ -1,0 +1,1 @@
+# Wayzyy Article Service Receiver

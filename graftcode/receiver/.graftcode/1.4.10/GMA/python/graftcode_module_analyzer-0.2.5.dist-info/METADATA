@@ -1,0 +1,22 @@
+Metadata-Version: 2.4
+Name: graftcode-module-analyzer
+Version: 0.2.5
+Summary: Module analyzer for GraftCode
+Author-email: GraftCode Team <services@graftcode.com>
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.10
+Requires-Dist: graftcode-python-protocol==1.8.0
+Requires-Dist: graftcode-python-storage==2.3.0
+Requires-Dist: graftcode-python-logger==3.0.4
+Requires-Dist: docstring-parser<1,>=0.15
+Provides-Extra: dev
+Requires-Dist: pytest==8.3.5; extra == "dev"
+Requires-Dist: pytest-cov==5.0.0; extra == "dev"
+Requires-Dist: pre-commit==3.5.0; extra == "dev"
+Requires-Dist: black==24.1.1; extra == "dev"
+Requires-Dist: isort==5.13.2; extra == "dev"
+Requires-Dist: flake8==7.0.0; extra == "dev"

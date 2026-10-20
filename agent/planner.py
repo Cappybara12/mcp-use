@@ -114,13 +114,21 @@ def generate_outline(topic: str, research_brief: str, existing_articles: list[st
 
     print(f"\n[planner] Generating outline for: {topic}", file=sys.stderr)
 
-    llm = ChatOpenAI(
-        model="kimi-k2.7-code-highspeed",
-        api_key=os.environ["KIMI_API_KEY"],
-        base_url="https://api.moonshot.ai/v1",
-        temperature=1,
-        max_tokens=6000,
-    )
+    if os.environ.get("OPENAI_API_KEY"):
+        llm = ChatOpenAI(
+            model=os.environ.get("OPENAI_MODEL", "gpt-5.5"),
+            api_key=os.environ["OPENAI_API_KEY"],
+            temperature=1,
+            max_tokens=6000,
+        )
+    else:
+        llm = ChatOpenAI(
+            model="kimi-k2.7-code-highspeed",
+            api_key=os.environ["KIMI_API_KEY"],
+            base_url="https://api.moonshot.ai/v1",
+            temperature=1,
+            max_tokens=6000,
+        )
     fallback_llm = ChatOpenAI(
         model="llama-3.3-70b-versatile",
         api_key=os.environ["GROQ_API_KEY"],

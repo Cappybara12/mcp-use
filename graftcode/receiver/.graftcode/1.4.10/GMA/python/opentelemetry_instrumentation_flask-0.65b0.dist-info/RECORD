@@ -1,0 +1,12 @@
+opentelemetry/instrumentation/flask/__init__.py,sha256=obpGfOmQouzMaWBm8Kwhz0BWnH3j7i_N-rk9tedyC5I,34974
+opentelemetry/instrumentation/flask/__pycache__/__init__.cpython-312.pyc,,
+opentelemetry/instrumentation/flask/__pycache__/package.cpython-312.pyc,,
+opentelemetry/instrumentation/flask/__pycache__/version.cpython-312.pyc,,
+opentelemetry/instrumentation/flask/package.py,sha256=lLpLb_-tbfHKUQcXW2LLuzTatZta0iwBNeABCaBLgAs,168
+opentelemetry/instrumentation/flask/version.py,sha256=-Rf_XkVgjzBGXkth6rg5g0wlRe89UiHM9N5QtCtYKW0,100
+opentelemetry_instrumentation_flask-0.65b0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
+opentelemetry_instrumentation_flask-0.65b0.dist-info/METADATA,sha256=pXEydufcdbX-ZoWjFzNatUA9yr06CUhfkKP9z376Va4,2166
+opentelemetry_instrumentation_flask-0.65b0.dist-info/RECORD,,
+opentelemetry_instrumentation_flask-0.65b0.dist-info/WHEEL,sha256=lCkmxWfQsSc9CfIClYeavTdQeEX2toPqufh9gI35EQA,87
+opentelemetry_instrumentation_flask-0.65b0.dist-info/entry_points.txt,sha256=zxpWYkQi4g_SrQ38vAqHp99BH5X18HVauQDUOOQq9z8,91
+opentelemetry_instrumentation_flask-0.65b0.dist-info/licenses/LICENSE,sha256=xx0jnfkXJvxRnG63LTGOxlggYnIysveWIZ6H3PNdCrQ,11357

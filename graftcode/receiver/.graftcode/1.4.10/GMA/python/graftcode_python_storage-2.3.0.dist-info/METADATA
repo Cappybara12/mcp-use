@@ -1,0 +1,210 @@
+Metadata-Version: 2.4
+Name: graftcode-python-storage
+Version: 2.3.0
+Summary: A Python storage implementation for GraftCode
+Author-email: Graftcode <support@graftcode.com>
+License: MIT
+Project-URL: Homepage, https://dev.azure.com/graftcode/GRAFTCODE/_git/graftcode-storage?path=/src/python
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: azure-storage-blob
+Requires-Dist: azure-identity
+
+# GraftCode Python Storage
+
+A Python storage implementation for GraftCode that provides unified interface for different storage backends.
+
+## Features
+
+- **Multiple Storage Backends**: Support for Azure Blob Storage and Local File System
+- **Unified Interface**: Single API for all storage operations
+- **Type Safety**: Full type hints support
+- **ZIP Processing**: Built-in ZIP file handling
+
+## Installation
+
+This package is hosted on Azure Artifacts. To install it, you need to configure your pip to use the Azure Artifacts feed.
+
+### Configure Azure Artifacts Feed
+
+1. **Add the Azure Artifacts index URL to pip:**
+   ```bash
+   pip config set global.extra-index-url https://pkgs.dev.azure.com/graftcode/GRAFTCODE/_packaging/graftcode-packages/pypi/simple/
+   ```
+
+2. **Or install directly with index URL:**
+   ```bash
+   pip install --extra-index-url https://pkgs.dev.azure.com/graftcode/GRAFTCODE/_packaging/graftcode-packages/pypi/simple/ graftcode-python-storage
+   ```
+
+3. **Or use pip.conf file:**
+   Create/edit `~/.pip/pip.conf` (Linux/Mac) or `%APPDATA%\pip\pip.ini` (Windows):
+   ```ini
+   [global]
+   extra-index-url = https://pkgs.dev.azure.com/graftcode/GRAFTCODE/_packaging/graftcode-packages/pypi/simple/
+   ```
+
+### Install the Package
+
+```bash
+pip install graftcode-python-storage
+```
+
+## Usage
+
+### Basic Usage
+
+```python
+from graftcode_storage.storage_client import StorageClient
+
+# Create storage client (automatically detects storage type from environment)
+client = StorageClient()
+storage = client.get_storage()
+
+# Upload file
+storage.upload_blob("local_file.txt", "container/remote_file.txt")
+
+# Download file
+storage.download_blob("localFilePathToSave.txt", "ontainer/remote_file.txt")
+
+# Check existence
+url = storage.blob_exists("container/remote_file.txt")
+
+# Delete file
+storage.delete_blob("container/remote_file.txt")
+```
+
+### Configuration
+
+Set environment variables to configure the storage backend:
+
+```bash
+# For Azure Blob Storage (default)
+export STORAGE_TYPE=AZURE
+export AZURE_STORAGE_URL="https://your-storage-account.blob.core.windows.net"
+export AZURE_STORAGE_TOKEN="?sv=..."
+
+# For Local Storage
+export STORAGE_TYPE=LOCAL
+```
+
+### Advanced Usage
+
+#### Processing ZIP Files
+
+```python
+# The storage interface includes built-in ZIP processing
+storage.download_file("container", "archive.zip", "local_archive.zip")
+
+# Check if file is ZIP
+if storage.is_zip_file("local_archive.zip"):
+    # Extract ZIP file
+    storage.extract_zip("local_archive.zip", "extracted_folder/")
+    
+    # Or process file (extract if ZIP)
+    storage.process_file("local_archive.zip", "extracted_folder/")
+```
+
+#### Using Specific Storage Implementation
+
+```python
+from graftcode_storage.storage.azure_blob_storage import AzureBlobStorage
+from graftcode_storage.storage.local_storage import LocalStorage
+
+# Direct Azure Blob Storage usage
+azure_storage = AzureBlobStorage("https://your-account.blob.core.windows.net/?sv=...")
+
+# Direct Local Storage usage
+local_storage = LocalStorage()
+```
+
+## Development
+
+### Setup Development Environment
+
+```bash
+# Clone the repository
+git clone https://dev.azure.com/graftcode/GRAFTCODE/_git/graftcode-storage
+cd graftcode-storage/src/python/graftcode-python-storage
+
+# Install in development mode
+pip install -e .
+
+# Install development dependencies
+pip install -r requirements.txt
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=graftcode_storage
+
+# Run specific test file
+pytest tests/test_storage_factory.py -v
+```
+
+### Code Quality
+
+```bash
+# Format code
+black .
+
+# Sort imports
+isort .
+
+# Type checking
+mypy graftcode_storage/
+
+# Linting
+flake8 graftcode_storage/
+```
+
+### Building and Publishing
+
+```bash
+# Build the package
+python -m build
+
+# The package will be published to Azure Artifacts automatically via CI/CD pipeline
+```
+
+## Architecture
+
+The library follows clean architecture principles:
+
+- **StorageInterface**: Abstract base class defining storage operations
+- **AzureBlobStorage**: Azure Blob Storage implementation
+- **LocalStorage**: Local file system implementation  
+- **StorageFactory**: Factory pattern for creating storage instances
+- **StorageClient**: Main client providing easy access to storage
+
+## Environment Variables
+
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `STORAGE_TYPE` | Storage backend type (`AZURE` or `LOCAL`) | No | `AZURE` |
+| `AZURE_STORAGE_URL` | Azure Blob Storage URL | Yes (for Azure) | - |
+| `AZURE_STORAGE_TOKEN` | Azure Blob Storage SAS TOKEN | Yes (for Azure) | - |
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Support
+
+For issues and questions, please use the Azure DevOps repository:
+- **Repository**: https://dev.azure.com/graftcode/GRAFTCODE/_git/graftcode-storage
+- **Issues**: https://dev.azure.com/graftcode/GRAFTCODE/_git/graftcode-storage/_workitems 

@@ -113,6 +113,8 @@ def _search_and_scrape(app: FirecrawlApp, topic: str) -> list[dict]:
 
 
 def _get_llm_client() -> OpenAI:
+    if os.environ.get("OPENAI_API_KEY"):
+        return OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     return OpenAI(api_key=os.environ["KIMI_API_KEY"], base_url="https://api.moonshot.ai/v1")
 
 
@@ -162,7 +164,7 @@ def run_research(topic: str, known_sources: list[dict] = None) -> dict:
         from agent.utils import call_with_fallback
         response = call_with_fallback(
             lambda: client.chat.completions.create(
-                model="kimi-k2.7-code-highspeed",
+                model=os.environ.get("OPENAI_MODEL", "gpt-5.5") if os.environ.get("OPENAI_API_KEY") else "kimi-k2.7-code-highspeed",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=1, max_tokens=3000,
             ),

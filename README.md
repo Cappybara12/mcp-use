@@ -12,7 +12,7 @@ this at your own blog/niche.
 ## Setup
 
 1. `pip install -r requirements.txt`
-2. Copy `.env.example` to `.env` and fill in your API keys (Kimi, Groq, Firecrawl, Pexels)
+2. Copy `.env.example` to `.env` and fill in your API keys (OpenAI or Kimi, Groq, Firecrawl, Pexels, and GitHub for PR publishing)
 3. Edit `config.yaml` with your own brand name, blog URL, and site repo path
 4. Register the server in your Claude Desktop config, pointing at `mcp_server.py`
 
