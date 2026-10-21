@@ -1,0 +1,25 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# Graftcode runtime and installed gateway binary
+.graftcode/
+usr/
+
+# dependencies and build output
+node_modules/
+ui/dist/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# generated per machine by scripts/start.sh
+graft-package.json
+logs/
+.DS_Store
+
+# drafts generated in demo mode (keep only the bundled sample)
+receiver/sample_data/drafts/*
+!receiver/sample_data/drafts/2026-01-01_sample-assagao-cafe-guide.md

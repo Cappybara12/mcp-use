@@ -1,0 +1,59 @@
+# Wayzyy's configuration. Copy this file and change the values to retarget the
+# whole pipeline (topic categories, suggestions, style rules) to another niche.
+# Select a file with PIPELINE_CONFIG=/path/to/config.yaml before starting the gateway.
+# Any key you omit falls back to the built-in default (this file's values).
+
+brand:
+  name: Wayzyy
+  description: Goa vacation rental & travel marketplace
+  # The style check expects articles to mention this word. Leave empty to skip the check.
+  topic_keyword: Goa
+  # Prompt used when research is skipped. {topic} and {brand} are substituted.
+  fallback_research_prompt: "Topic: {topic}. Write a comprehensive guide for {brand}'s audience based on your knowledge."
+
+# First rule whose keyword appears in the topic title wins; otherwise `default` is used.
+categories:
+  default: Guide
+  rules:
+    - name: Beaches
+      keywords: [beach]
+    - name: Stays & Villas
+      keywords: [rental, villa]
+    - name: Food & Cafes
+      keywords: [food, cafe]
+    - name: Seasonal
+      keywords: [monsoon]
+
+# Topic suggestions. Tiers are ordered highest priority first: a topic matching tier 1
+# scores 30, tier 2 scores 20, tier 3 scores 10, plus one point per trend source.
+suggestion:
+  tiers:
+    - [villa, vacation rental, airbnb alternative, where to stay]
+    - [best beaches, hidden beaches, south goa, north goa, itinerary, workation]
+    - [things to do, travel guide, family, budget, monsoon, restaurants, cafe, nightlife]
+
+# Style check. Score = 100 - (4 per banned word) - (2 per passive phrase, capped at 5), floor 60.
+style:
+  banned_words:
+    - delve
+    - tapestry
+    - nestled
+    - picture-perfect
+    - hidden gem
+    - breathtaking
+    - vibrant
+    - moreover
+    - furthermore
+    - in conclusion
+    - leverage
+    - utilize
+    - optimal
+    - seamlessly
+    - must-visit
+  banned_openers: [are you planning, looking for, if you're planning]
+  # Word that proves photo attribution is present (e.g. the stock photo site). Empty to skip.
+  attribution_keyword: pexels
+  publish_threshold: 85
+
+# Optional: folder (relative to this file) with review/ and drafts/ used in demo mode.
+# data_dir: data

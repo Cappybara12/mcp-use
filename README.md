@@ -39,3 +39,22 @@ rewrite for your own brand/site.
 - `edit_draft` — request changes, rewritten and saved automatically
 - `save_draft` — save edited text directly, no LLM call needed
 - `push_to_github` — converts to your site's format and opens a real PR for review
+
+## Graftcode demo
+
+[`graftcode/`](graftcode/) wraps this pipeline's methods in a Graftcode receiver, so a React
+dashboard, a Node script and MCP clients (Claude, Cursor) can all call the same Python methods
+with no REST layer. It runs on its own in a demo mode (bundled sample data, no API keys):
+
+```bash
+cd graftcode && bash scripts/start.sh
+```
+
+To drive this real pipeline instead, point it at this folder (use an absolute path):
+
+```bash
+cd graftcode && WAYZYY_WRITER_DIR="$(cd .. && pwd)" bash scripts/start.sh
+```
+
+See [`graftcode/README.md`](graftcode/README.md) for the architecture, the MCP setup, the YAML
+config that retargets it to another niche, and the known limits.

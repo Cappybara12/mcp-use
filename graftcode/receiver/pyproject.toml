@@ -5,10 +5,18 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "wayzyy_article_service"
 version = "1.0.0"
-description = "Wayzyy Autonomous Content Engine - Graftcode Polyglot Receiver"
+description = "Graftcode receiver for the Wayzyy content pipeline"
 readme = "README.md"
 requires-python = ">=3.10"
-authors = [
-  { name = "Akshay Sharma", email = "akshayne912@gmail.com" }
-]
-dependencies = []
+dependencies = ["PyYAML>=6.0"]
+
+[project.optional-dependencies]
+env = ["python-dotenv"]
+mcp = ["fastmcp"]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["article_receiver*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

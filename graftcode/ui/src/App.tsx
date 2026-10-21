@@ -19,6 +19,8 @@ import {
   LightbulbIcon,
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
+import { callGraft, mcpListTools } from './graft'
+import Architecture from './Architecture'
 
 interface Topic {
   id: string
@@ -76,12 +78,15 @@ export default function App() {
   const [auditResult, setAuditResult] = useState<any>(null)
   const [sourcesList, setSourcesList] = useState<any[]>([])
   const [sourcesModal, setSourcesModal] = useState(false)
+  const [sourcesLoading, setSourcesLoading] = useState(false)
+  const [savedContent, setSavedContent] = useState('')
   const [activeSourcesTopic, setActiveSourcesTopic] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [genStep, setGenStep] = useState(0)
   const [genTopic, setGenTopic] = useState('')
   const [loading, setLoading] = useState(false)
   const [rpcLogs, setRpcLogs] = useState<RpcLog[]>([])
+  const [mcpTools, setMcpTools] = useState<string[] | null>(null)
   const [catFilter, setCatFilter] = useState('All')
   const [prResult, setPrResult] = useState<any>(null)
   const [scanResult, setScanResult] = useState<any>(null)
@@ -91,22 +96,28 @@ export default function App() {
 
   const callGraftRpc = async (method: string, body: any = {}) => {
     const t0 = Date.now()
+    // Argument order of the generated Graft methods (the Python signatures).
+    const args: Record<string, unknown[]> = {
+      getTopicSources: [body.topic ?? ''],
+      writeArticle: [body.topic ?? '', body.skipResearch ?? false, body.extraResearch ?? ''],
+      getDraft: [body.filename ?? ''],
+      saveDraft: [body.filename ?? '', body.content ?? ''],
+      runStyleCheck: [body.filename ?? ''],
+      pushToGithub: [body.filename ?? ''],
+    }
     try {
-      const res = await fetch(`/api/graft/${method}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      const result = await res.json()
-      const ms = Date.now() - t0
+      const { data } = await callGraft(method, ...(args[method] ?? []))
       setRpcLogs(prev => [
-        { id: Math.random().toString(36).slice(2), method: `pipeline.${method}()`, time: new Date().toLocaleTimeString(), durationMs: ms, status: result.success ? 'ok' : 'err' },
+        { id: Math.random().toString(36).slice(2), method: `pipeline.${method}()`, time: new Date().toLocaleTimeString(), durationMs: Date.now() - t0, status: 'ok' },
         ...prev.slice(0, 19),
       ])
-      return result.success ? result.data : { error: result.error || 'Graft call failed.' }
-    } catch (err) {
-      console.error(err)
-      return null
+      return data
+    } catch (err: any) {
+      setRpcLogs(prev => [
+        { id: Math.random().toString(36).slice(2), method: `pipeline.${method}()`, time: new Date().toLocaleTimeString(), durationMs: Date.now() - t0, status: 'err' },
+        ...prev.slice(0, 19),
+      ])
+      return { error: err?.message || String(err) }
     }
   }
 
@@ -130,14 +141,33 @@ export default function App() {
   }
 
   useEffect(() => { refreshAll() }, [])
+  useEffect(() => { mcpListTools().then(setMcpTools).catch(() => setMcpTools(null)) }, [])
 
   const loadDraft = async (fn: string) => {
     const r = await callGraftRpc('getDraft', { filename: fn })
-    if (r?.content) { setDraftContent(r.content); setSelectedDraft(fn) }
+    if (r?.content) { setDraftContent(r.content); setSavedContent(r.content); setSelectedDraft(fn) }
+  }
+
+  const dirty = !!selectedDraft && draftContent !== savedContent
+
+  const handleSave = async () => {
+    setLoading(true)
+    const r = await callGraftRpc('saveDraft', { filename: selectedDraft, content: draftContent })
+    if (r && !r.error) {
+      setSavedContent(draftContent)
+      const d = await callGraftRpc('listDrafts')
+      if (Array.isArray(d)) setDrafts(d)
+    }
+    setLoading(false)
   }
 
   const handleStyleCheck = async (fn: string) => {
     setLoading(true)
+    // The audit reads the saved file, so save pending edits first.
+    if (dirty && fn === selectedDraft) {
+      const saved = await callGraftRpc('saveDraft', { filename: fn, content: draftContent })
+      if (saved && !saved.error) setSavedContent(draftContent)
+    }
     const r = await callGraftRpc('runStyleCheck', { filename: fn })
     setAuditResult(r)
     setLoading(false)
@@ -183,11 +213,15 @@ export default function App() {
 
   const openSources = async (title: string) => {
     setActiveSourcesTopic(title); setSourcesModal(true)
+    setSourcesList([]); setSourcesLoading(true)
     const r = await callGraftRpc('getTopicSources', { topic: title })
     if (Array.isArray(r)) setSourcesList(r)
+    setSourcesLoading(false)
   }
 
-  const filtered = catFilter === 'All' ? topics : topics.filter(t => t.category.toLowerCase().includes(catFilter.toLowerCase()))
+  const brandName = status?.active_brand?.split(' (')[0] ?? 'Content Engine'
+
+  const filtered = catFilter === 'All' ? topics : topics.filter(t => t.category === catFilter)
 
   return (
     <div className="shell">
@@ -198,7 +232,7 @@ export default function App() {
           <div className="sidebar-logo-icon">
             <Zap size={16} color="#fff" />
           </div>
-          <span className="sidebar-logo-text">Wayzyy</span>
+          <span className="sidebar-logo-text">{brandName}</span>
           <span className="sidebar-badge">GRAFT</span>
         </div>
 
@@ -229,8 +263,8 @@ export default function App() {
           </div>
           <div className="sidebar-item">
             <Cpu size={15} />
-            MCP: Active
-            <span className="dot dot-green" style={{ marginLeft: 'auto' }} />
+            {mcpTools ? `MCP: ${mcpTools.length} tools` : 'MCP: offline'}
+            <span className={mcpTools ? 'dot dot-green' : 'dot'} style={{ marginLeft: 'auto' }} />
           </div>
         </div>
 
@@ -247,7 +281,7 @@ export default function App() {
         {/* Topbar */}
         <div className="topbar">
           <div className="topbar-left">
-            <span style={{ color: '#9ca3af' }}>Wayzyy</span>
+            <span style={{ color: '#9ca3af' }}>{brandName}</span>
             <ChevronRight size={14} color="#d1d5db" />
             <span className="topbar-breadcrumb">
               {SIDEBAR_NAV.find(n => n.id === tab)?.label || 'Dashboard'}
@@ -273,7 +307,7 @@ export default function App() {
             <div className="animate-fade-in">
               <div className="page-header">
                 <div className="page-title">Dashboard</div>
-                <div className="page-subtitle">Wayzyy Autonomous Content Engine — powered by Graftcode polyglot RPC</div>
+                <div className="page-subtitle">{brandName} content engine — a Python pipeline called through Graftcode</div>
               </div>
 
               {/* Stat cards */}
@@ -304,7 +338,7 @@ export default function App() {
                     <BookOpen size={14} color="#16a34a" />
                   </div>
                   <div className="stat-value green">{drafts.length || '0'}</div>
-                  <div className="stat-meta">Indexed in Wayzyy blog corpus</div>
+                  <div className="stat-meta">Drafts in the current pipeline</div>
                 </div>
 
                 <div className="stat-card">
@@ -312,8 +346,8 @@ export default function App() {
                     Claude MCP
                     <Cpu size={14} color="#7c3aed" />
                   </div>
-                  <div className="stat-value" style={{ fontSize: 16, color: '#7c3aed' }}>Auto-Hosted</div>
-                  <div className="stat-meta">9 tools exposed to Claude Desktop</div>
+                  <div className="stat-value" style={{ fontSize: 16, color: '#7c3aed' }}>{mcpTools ? `${mcpTools.length} tools` : 'Offline'}</div>
+                  <div className="stat-meta">{mcpTools ? 'served by the Gateway at /mcp' : 'Gateway MCP endpoint unreachable'}</div>
                 </div>
               </div>
 
@@ -329,12 +363,12 @@ export default function App() {
                     <span className="badge badge-pink">MCP Tool</span>
                   </div>
                   <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.55 }}>
-                    Triggers a fresh scan across Instagram, Google News, and Reddit for trending Goa travel topics. Results are queued automatically.
+                    Runs the trend scanner (social, forums and the web) and adds new topics to the review queue. Skipped in demo mode.
                   </p>
                   {scanResult && (
                     <div style={{ marginBottom: 14, padding: '10px 14px', background: 'var(--bg-surface)', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12 }}>
                       <div style={{ fontWeight: 600, color: 'var(--green)', marginBottom: 4 }}>✓ Scanner completed</div>
-                      <div style={{ color: 'var(--text-muted)' }}>New topic: <strong style={{ color: 'var(--text-primary)' }}>{scanResult.new_topic_discovered?.title}</strong></div>
+                      <div style={{ color: 'var(--text-muted)' }}>{scanResult.message} Pending topics: <strong style={{ color: 'var(--text-primary)' }}>{scanResult.pending_topics_count}</strong></div>
                     </div>
                   )}
                   <button className="btn-primary" onClick={handleScan} disabled={scanLoading} style={{ width: '100%', justifyContent: 'center' }}>
@@ -353,14 +387,14 @@ export default function App() {
                     <span className="badge badge-pink">MCP Tool</span>
                   </div>
                   <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.55 }}>
-                    Ranks topics by search volume spike and seasonal relevance to recommend the highest-priority article to write next.
+                    Ranks pending topics by business-keyword match and number of trend sources, skipping topics that already have a draft.
                   </p>
                   {suggestion && (
                     <div style={{ marginBottom: 14, padding: '10px 14px', background: 'var(--bg-surface)', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12 }}>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>{suggestion.topic}</div>
                       <div style={{ color: 'var(--text-muted)', lineHeight: 1.5 }}>{suggestion.rationale}</div>
                       <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        {suggestion.target_keywords?.map((k: string) => <span key={k} className="tag">{k}</span>)}
+                        {suggestion.matched_signals?.map((k: string) => <span key={k} className="tag">{k}</span>)}
                       </div>
                     </div>
                   )}
@@ -381,10 +415,10 @@ export default function App() {
                   {[
                     { label: 'Receiver Host', value: 'Graftcode Gateway v1.4.10', ok: true },
                     { label: 'Transport',     value: 'Hypertube Binary / WebSocket', ok: true },
-                    { label: 'Primary LLM',   value: status?.providers.primary_llm ?? 'Groq LLaMA 3.3 70B', ok: true },
-                    { label: 'Media Engine',  value: status?.providers.media_engine ?? 'Pexels License API', ok: true },
-                    { label: 'Target Repo',   value: 'Wayzyy/wayzyy-site', ok: true },
-                    { label: 'MCP Surface',   value: '9 tools → Claude Desktop', ok: true },
+                    { label: 'Primary LLM',   value: status?.providers.primary_llm ?? 'loading…', ok: !!status },
+                    { label: 'Media Engine',  value: status?.providers.media_engine ?? 'loading…', ok: !!status },
+                    { label: 'Brand config', value: status?.active_brand ?? 'loading…', ok: !!status },
+                    { label: 'MCP Surface',   value: mcpTools ? `${mcpTools.length} tools at gateway /mcp` : 'unreachable', ok: !!mcpTools },
                   ].map(row => (
                     <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
                       <span style={{ color: 'var(--text-muted)' }}>{row.label}</span>
@@ -462,7 +496,7 @@ export default function App() {
 
               {/* Filters */}
               <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
-                {['All', 'Beaches', 'Stays', 'Food', 'Seasonal'].map(c => (
+                {['All', ...Array.from(new Set(topics.map(t => t.category)))].map(c => (
                   <button
                     key={c}
                     onClick={() => setCatFilter(c)}
@@ -492,7 +526,7 @@ export default function App() {
                         onClick={() => openSources(topic.title)}
                       >
                         <ExternalLink size={11} />
-                        {topic.sources_count} Sources
+                        {topic.sources_count} {topic.sources_count === 1 ? 'Source' : 'Sources'}
                       </button>
                     </div>
                     <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.4 }}>{topic.title}</div>
@@ -594,6 +628,9 @@ export default function App() {
                       <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Managed via Python ArticlePipelineService.get_draft()</div>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn-secondary" onClick={handleSave} disabled={!dirty || loading}>
+                        {dirty ? 'Save changes •' : 'Saved'}
+                      </button>
                       <button className="btn-secondary" onClick={() => handleStyleCheck(selectedDraft)} disabled={!selectedDraft || loading}>
                         <ShieldCheck size={13} />
                         Style Check
@@ -624,7 +661,7 @@ export default function App() {
             <div className="animate-fade-in">
               <div className="page-header">
                 <div className="page-title">Brand Style Auditor</div>
-                <div className="page-subtitle">40-point AI cliché and tone compliance check — powered by Python run_style_check()</div>
+                <div className="page-subtitle">Heuristic AI-cliché, passive-voice and structure check — powered by Python run_style_check()</div>
               </div>
 
               {!auditResult ? (
@@ -696,7 +733,7 @@ export default function App() {
             <div className="animate-fade-in">
               <div className="page-header">
                 <div className="page-title">GitHub PR Staging</div>
-                <div className="page-subtitle">Stage articles as pull requests against Wayzyy/wayzyy-site</div>
+                <div className="page-subtitle">Stage articles as pull requests against the configured site repo (needs the real pipeline)</div>
               </div>
 
               {!prResult ? (
@@ -744,97 +781,7 @@ export default function App() {
           )}
 
           {/* ══════════ ARCHITECTURE ══════════ */}
-          {tab === 'architecture' && (
-            <div className="animate-fade-in">
-              <div className="page-header">
-                <div className="page-title">Architecture: REST vs Graftcode</div>
-                <div className="page-subtitle">Why we deleted 400+ lines of glue code</div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginBottom: 20 }}>
-                <div className="arch-col">
-                  <div className="arch-col-header bad">
-                    ✗ Conventional REST (FastAPI + MCP)
-                  </div>
-                  <div className="code-block" style={{ borderRadius: 0, fontSize: 11.5, maxHeight: 320, overflow: 'auto' }}>
-{`# Python FastAPI (400+ lines)
-@app.post("/api/write")
-async def write(req: WriteRequest):
-    result = service.write_article(req.topic)
-    return {"data": result}
-
-@app.get("/api/topics")
-async def topics():
-    return service.list_topics()
-
-# Pydantic DTOs for each endpoint
-class WriteRequest(BaseModel):
-    topic: str
-    skip_research: bool = False
-
-# TypeScript fetch client
-const res = await fetch('/api/write', {
-  method: 'POST',
-  body: JSON.stringify({ topic })
-})
-
-# Separate FastMCP server for Claude
-@mcp.tool()
-def write_article(topic: str):
-    return service.write_article(topic)`}
-                  </div>
-                  <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--red)' }}>
-                    14 endpoints · 400+ lines · 2 separate integration layers · Contract drift risk
-                  </div>
-                </div>
-
-                <div className="arch-col">
-                  <div className="arch-col-header good">
-                    ✓ Graftcode Receiver Pattern (Zero Glue)
-                  </div>
-                  <div className="code-block" style={{ borderRadius: 0, fontSize: 11.5, maxHeight: 320, overflow: 'auto' }}>
-{`# Python Receiver — just plain methods
-class ArticlePipelineService:
-    def write_article(self, topic: str) -> str:
-        ...  # your logic here
-
-    def list_pending_topics(self) -> str:
-        ...
-
-# Run Graftcode Gateway
-gg ./article_receiver/service.py \\
-  --port 8080 --httpPort 8081
-
-# TypeScript — auto-generated typed package
-import { ArticlePipelineService } from
-  "@graft/pypi-wayzyy_article_service"
-
-GraftConfig.host = "ws://localhost:8080/ws"
-const svc = new ArticlePipelineService()
-const draft = await svc.writeArticle(topic)
-// Claude MCP: auto-exposed for free ✓`}
-                  </div>
-                  <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--green)' }}>
-                    Thin Vite RPC adapter · 0 hand-written DTOs · shared Python receiver surface
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-                {[
-                  { title: 'Lines Eliminated', value: '400+', sub: 'FastAPI routes, Pydantic DTOs, fetch wrappers removed', color: 'var(--accent)' },
-                  { title: 'RPC Latency',       value: '~15ms', sub: 'Hypertube binary protocol over local WebSocket', color: 'var(--green)' },
-                  { title: 'Claude MCP Tools',  value: '9',     sub: 'Automatically exposed — no separate MCP server needed', color: '#7c3aed' },
-                ].map(m => (
-                  <div key={m.title} className="stat-card">
-                    <div className="stat-label">{m.title}</div>
-                    <div className="stat-value" style={{ color: m.color }}>{m.value}</div>
-                    <div className="stat-meta">{m.sub}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {tab === 'architecture' && <Architecture statusLabel={status?.status} />}
 
         </div>
       </div>
@@ -857,12 +804,14 @@ const draft = await svc.writeArticle(topic)
             <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>{activeSourcesTopic}</div>
             <div className="divider" style={{ marginBottom: 14 }} />
             {sourcesList.length === 0 ? (
-              <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 20 }}>Loading sources…</div>
+              <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 20 }}>{sourcesLoading ? 'Loading sources…' : 'No sources recorded for this topic.'}</div>
             ) : sourcesList.map((s, i) => (
               <div key={i} style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', marginBottom: 4 }}>{s.platform}</div>
                 <div style={{ fontSize: 13, fontWeight: 500 }}>{s.title}</div>
-                <a href={s.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{s.url}</a>
+                {s.url
+                  ? <a href={s.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{s.url}</a>
+                  : <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>no link recorded</span>}
               </div>
             ))}
           </div>
