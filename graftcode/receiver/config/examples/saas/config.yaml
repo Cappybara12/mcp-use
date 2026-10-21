@@ -1,0 +1,34 @@
+# Example: the same pipeline retargeted from travel to a SaaS company blog.
+# Try it (demo mode, no API keys):
+#   PIPELINE_CONFIG=receiver/config/examples/saas/config.yaml \
+#   WAYZYY_WRITER_DIR=/nonexistent WAYZYY_SCANNER_DIR=/nonexistent bash scripts/start.sh
+
+brand:
+  name: Acme Analytics
+  description: Product analytics for B2B SaaS teams
+  topic_keyword: analytics
+  fallback_research_prompt: "Topic: {topic}. Write a practical, example-led article for {brand} readers."
+
+categories:
+  default: Article
+  rules:
+    - name: Tutorials
+      keywords: [how to, tutorial, guide, setup]
+    - name: Product
+      keywords: [dashboard, feature, release, integration]
+    - name: Pricing & Plans
+      keywords: [pricing, plan, cost]
+
+suggestion:
+  tiers:
+    - [pricing, alternative, vs, comparison, switch from]
+    - [how to, tutorial, setup, integration]
+    - [trends, benchmark, report, best practices]
+
+style:
+  banned_words: [synergy, game-changer, cutting-edge, revolutionary, leverage, seamlessly, robust]
+  banned_openers: [in today's fast-paced world, in the ever-evolving]
+  attribution_keyword: ""
+  publish_threshold: 90
+
+data_dir: data

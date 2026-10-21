@@ -10,7 +10,5 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
-  "dependencies": {
-    "@graft/pypi-wayzyy_article_service_b3m8pn": "^1.0.0"
-  }
+  "dependencies": {}
 }
