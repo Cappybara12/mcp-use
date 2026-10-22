@@ -79,9 +79,13 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       setDetail(await studio.workspace(wsId))
     } catch (err) {
       setDetail(null)
-      fail(err)
+      // A remembered workspace may no longer exist (for example after switching data folders): fall back quietly.
+      if (errorText(err).includes('does not exist')) {
+        const list = await refreshWorkspaces()
+        if (list.length > 0) selectWorkspace(list[0].id)
+      } else fail(err)
     }
-  }, [wsId, fail])
+  }, [wsId, fail, refreshWorkspaces, selectWorkspace])
 
   // First load: catalogue and workspaces. A fresh install gets a demo workspace so there is something to try.
   useEffect(() => {
@@ -98,7 +102,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
           selectWorkspace(created.id)
         }
         setWorkspaces(all)
-        setWsId(prev => (all.some(w => w.id === prev) ? prev : all[0].id))
+        const remembered = readStored()
+        selectWorkspace(all.some(w => w.id === remembered) ? remembered : all[0].id)
         setConnected(true)
       } catch (err) {
         if (!cancelled) {
@@ -112,7 +117,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true }
   }, [fail, selectWorkspace])
 
-  useEffect(() => { void refreshDetail() }, [refreshDetail])
+  // Wait for the first load so a stale remembered workspace id is corrected before anything asks for it.
+  useEffect(() => { if (!loading) void refreshDetail() }, [loading, refreshDetail])
 
   const value = useMemo<StudioState>(() => ({
     catalog, workspaces, wsId, detail, loading, connected, toasts, selectWorkspace, refreshWorkspaces, refreshDetail, notify, fail, dismiss,
