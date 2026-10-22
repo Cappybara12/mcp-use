@@ -64,9 +64,9 @@ def test_missing_draft_raises(service):
         service.get_draft("does-not-exist")
 
 
-def test_save_draft_cannot_escape_drafts_dir(service, tmp_path):
-    result = json.loads(service.save_draft("../../escape.md", "x"))
-    assert result["filename"] == "escape.md"
+def test_save_draft_rejects_path_like_names(service, tmp_path):
+    with pytest.raises(ValueError):
+        service.save_draft("../../escape.md", "x")
     assert not (tmp_path / "escape.md").exists()
 
 

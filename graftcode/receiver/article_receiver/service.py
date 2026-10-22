@@ -1,3 +1,4 @@
+import glob as _glob
 import os
 import sys
 import re
@@ -294,15 +295,52 @@ def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
 
 
+def _validated_name(filename) -> str:
+    """Accept only a plain file name: no directories, no absolute paths, no traversal."""
+    if not isinstance(filename, str) or not filename.strip():
+        raise ValueError("Draft filename is required.")
+    name = filename.strip()
+    if "\x00" in name or "/" in name or "\\" in name or name in (".", "..") or name != Path(name).name:
+        raise ValueError(f"Invalid draft filename {filename!r}: only a plain file name is allowed.")
+    return name
+
+
+def _inside_drafts(path: Path) -> Path:
+    """Resolve symlinks and require the real location to be inside the drafts folder."""
+    root = DRAFTS_DIR.resolve()
+    resolved = path.resolve()
+    if resolved != root and not resolved.is_relative_to(root):
+        raise ValueError("Draft path resolves outside the drafts folder.")
+    return resolved
+
+
 def _find_draft(filename: str) -> Path:
-    """Resolve a draft by exact name, falling back to a fuzzy match."""
-    file_path = DRAFTS_DIR / filename
-    if file_path.exists():
-        return file_path
-    matches = list(DRAFTS_DIR.glob(f"*{filename}*"))
-    if matches:
-        return matches[0]
+    """Resolve an existing draft by exact name, falling back to a fuzzy name match.
+
+    Every candidate is checked after symlink resolution, so neither a crafted name nor a
+    symlink planted in the drafts folder can reach a file outside it.
+    """
+    name = _validated_name(filename)
+    exact = DRAFTS_DIR / name
+    if exact.is_file():
+        return _inside_drafts(exact)
+    for match in sorted(DRAFTS_DIR.glob(f"*{_glob.escape(name)}*")):
+        if not match.is_file():
+            continue
+        try:
+            return _inside_drafts(match)
+        except ValueError:
+            continue  # a symlink pointing outside is never a match
     raise ValueError(f"Draft '{filename}' not found.")
+
+
+def _draft_write_path(filename: str) -> Path:
+    """Path a draft may be written to: a plain *.md name that stays inside the drafts folder."""
+    name = _validated_name(filename)
+    if not name.lower().endswith(".md"):
+        raise ValueError("Draft filenames must end in .md.")
+    return _inside_drafts(DRAFTS_DIR / name)
+
 
 class ArticlePipelineService:
     """
@@ -445,7 +483,7 @@ class ArticlePipelineService:
         date_str = datetime.now().strftime("%Y-%m-%d")
         filename = f"{date_str}_{slug}.md"
         DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
-        target_path = DRAFTS_DIR / filename
+        target_path = _draft_write_path(filename)
         target_path.write_text(article_content, encoding="utf-8")
 
         return _to_json(ArticleResult(
@@ -469,7 +507,7 @@ class ArticlePipelineService:
             "(set WAYZYY_WRITER_DIR) to generate a researched article.\n\n"
             f"This draft was created by `write_article(\"{topic}\")` over Graftcode.\n"
         )
-        target_path = DRAFTS_DIR / filename
+        target_path = _draft_write_path(filename)
         target_path.write_text(body, encoding="utf-8")
         return _to_json(ArticleResult(
             status="completed (demo)",
@@ -529,7 +567,7 @@ class ArticlePipelineService:
         Saves updated markdown content back to the draft file.
         """
         DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
-        file_path = DRAFTS_DIR / Path(filename).name
+        file_path = _draft_write_path(filename)
         file_path.write_text(content, encoding="utf-8")
         return _to_json(SaveResult(
             status="success",

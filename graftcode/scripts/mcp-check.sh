@@ -20,4 +20,14 @@ curl -s -X POST "$URL" "${H[@]}" -H "Mcp-Session-Id: $SID" \
 echo; echo "Calling $TOOL:"
 curl -s -X POST "$URL" "${H[@]}" -H "Mcp-Session-Id: $SID" \
   -d "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"$TOOL\",\"arguments\":$ARGS}}" \
-  | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['result']['structuredContent']['value'] if 'result' in d else d)"
+  | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+r = d.get('result')
+if r is None:
+    print('ERROR:', d.get('error'))
+elif r.get('isError') or 'structuredContent' not in r:
+    print('TOOL ERROR:', (r.get('content') or [{}])[0].get('text', r))
+else:
+    print(r['structuredContent']['value'])
+"

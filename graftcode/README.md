@@ -183,6 +183,10 @@ legacy/                                the superseded FastMCP bridge (comparison
 - **Package names and registry IDs change.** The generated package name and the registry ID
   can differ per machine and per gateway restart, so `start.sh` reads them from the gateway log
   and writes `graft-package.json` for the callers.
+- **Draft files are sandboxed.** Draft filenames must be plain names. Absolute paths, `..`, and symlinks that
+  resolve outside the drafts folder are rejected for every method that reads or writes a draft (regression
+  tests in `receiver/tests/test_security.py`). The gateway itself still has no authentication, so this
+  limits what a caller can reach but does not replace authentication.
 - **Security.** The gateway only allows `http://localhost:5173` by default (`GRAFT_CORS`), has
   no authentication (including on `/mcp`), and `pushToGithub` can open PRs when configured. Do not expose it publicly.
 - **Typed returns in the browser too.** The same opaque-handle behaviour applies to the browser
@@ -196,4 +200,5 @@ legacy/                                the superseded FastMCP bridge (comparison
 
 ## License
 
-No license has been chosen yet. Add one before accepting contributions.
+[MIT](LICENSE). The Graftcode gateway (`gg`) and the generated Graft packages are
+Graftcode's own software and are governed by their terms; this repository does not redistribute them.
