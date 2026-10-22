@@ -70,7 +70,7 @@ def check(markdown: str, keyword: str, rulebook: dict, site_url: str = "") -> di
     uses = 0
     if keyword:
         uses = len(re.findall(rf"\b{re.escape(keyword)}\b", text_l))
-        density = uses / total_words * 100 * max(1, len(keyword.split()))
+        density = uses / total_words * 100          # phrase occurrences per 100 words
         first100 = " ".join(text_l.split()[:100])
         add("kw_title", "Keyword in the title", keyword in title.lower(), f"'{keyword}'", "error", f"Put '{keyword}' in the title.")
         add("kw_intro", "Keyword in the first 100 words", keyword in first100, "", "warn", f"Mention '{keyword}' in the opening paragraph.")

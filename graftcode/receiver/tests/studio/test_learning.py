@@ -187,3 +187,10 @@ def test_discovery_finds_posts_through_a_feed_or_sitemap(mock):
     mock.routes.clear()
     with pytest.raises(StudioError, match="Could not find"):
         sources.discover_posts(mock.url, 5)
+
+
+def test_long_tail_keywords_are_not_penalised_for_their_length():
+    keyword = "how to read a retention table"
+    text = "# " + keyword.title() + "\n\n" + ("Plain filler words fill the page here. " * 60) + keyword + " matters. " + keyword + " again.\n"
+    density = next(c for c in seo.check(text, keyword, {"rules": []})["checks"] if c["id"] == "kw_density")
+    assert density["ok"], density            # 2 uses in about 400 words is natural, whatever the phrase length

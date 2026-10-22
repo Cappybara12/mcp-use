@@ -11,7 +11,7 @@
   --sidebar-text: #ffffff;
   --sidebar-muted: rgba(255,255,255,0.45);
   --sidebar-hover: rgba(255,255,255,0.08);
-  --sidebar-active: rgba(218,26,96,0.18);
+  --sidebar-active: rgba(255,106,19,0.16);
 
   --border:     #e4e4e7;
   --border-dark:#d1d1d6;
@@ -20,15 +20,19 @@
   --text-muted:   #6b7280;
   --text-dim:     #9ca3af;
 
-  --accent:       #da1a60;
-  --accent-hover: #c01653;
-  --accent-light: rgba(218,26,96,0.08);
-  --accent-border:rgba(218,26,96,0.25);
+  --accent:       #ff6a13;   /* orange: the one working accent */
+  --accent-hover: #e85c08;
+  --accent-light: rgba(255,106,19,0.09);
+  --accent-border:rgba(255,106,19,0.38);
 
-  --green:  #16a34a;
-  --green-bg: rgba(22,163,74,0.08);
-  --amber:  #d97706;
-  --red:    #dc2626;
+  --graft:        #da1a60;   /* Graftcode pink: only for Graft and MCP elements */
+  --graft-light:  rgba(218,26,96,0.09);
+  --graft-border: rgba(218,26,96,0.3);
+
+  --green:  #111111;         /* 'ok' is black, not green */
+  --green-bg: rgba(0,0,0,0.05);
+  --amber:  #ff6a13;
+  --red:    #d92d20;         /* errors only */
 
   --radius-sm: 6px;
   --radius:    10px;
@@ -375,9 +379,10 @@ body {
   border-radius: 20px;
 }
 .badge-green  { background: var(--green-bg); color: var(--green); }
-.badge-pink   { background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent-border); }
+.badge-pink   { background: var(--graft-light); color: var(--graft); border: 1px solid var(--graft-border); }
+.badge-orange { background: var(--accent-light); color: var(--accent-hover); border: 1px solid var(--accent-border); }
 .badge-gray   { background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border); }
-.badge-amber  { background: rgba(217,119,6,0.08); color: var(--amber); }
+.badge-amber  { background: var(--accent-light); color: var(--accent-hover); }
 
 /* ─── Table ────────────────────────────────────────── */
 .table-container {
@@ -448,7 +453,7 @@ input:focus, textarea:focus, select:focus {
 .dot-green  { background: var(--green); }
 .dot-amber  { background: var(--amber); }
 .dot-red    { background: var(--red); }
-.dot-pink   { background: var(--accent); }
+.dot-pink   { background: var(--graft); }
 
 /* ─── Divider ──────────────────────────────────────── */
 .divider { height: 1px; background: var(--border); }

@@ -21,11 +21,44 @@ const parse = (raw: unknown) => {
   }
 }
 
+// ── Activity log: every call that goes through the Graft, shown in the dashboard's pink strip ──
+export interface GraftCall {
+  id: number
+  method: string
+  ms: number
+  ok: boolean
+  at: number
+}
+
+let callId = 0
+let calls: GraftCall[] = []
+const listeners = new Set<() => void>()
+
+export const graftActivity = {
+  subscribe(fn: () => void) {
+    listeners.add(fn)
+    return () => { listeners.delete(fn) }
+  },
+  snapshot: () => calls,
+}
+
+function record(method: string, ms: number, ok: boolean) {
+  calls = [{ id: ++callId, method, ms, ok, at: Date.now() }, ...calls].slice(0, 40)
+  listeners.forEach(fn => fn())
+}
+
 /** Calls a Python receiver method through the generated Graft (WebSocket). */
 export async function callGraft(method: string, ...args: unknown[]): Promise<Timed<any>> {
   const t0 = performance.now()
-  const raw = await service[method](...args)
-  return { data: parse(raw), ms: performance.now() - t0 }
+  try {
+    const raw = await service[method](...args)
+    const ms = performance.now() - t0
+    record(method, ms, true)
+    return { data: parse(raw), ms }
+  } catch (err) {
+    record(method, performance.now() - t0, false)
+    throw err
+  }
 }
 
 // ── MCP: the Gateway's built-in endpoint (streamable HTTP, JSON-RPC) ───────────

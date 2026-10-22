@@ -27,3 +27,7 @@ receiver/sample_data/drafts/*
 # Studio data (keys!) lives outside the repo by default; never commit a local override
 .graft-studio/
 studio_data/
+
+# Python packaging output
+build/
+*.egg-info/

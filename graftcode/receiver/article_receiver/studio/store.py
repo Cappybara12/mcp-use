@@ -283,7 +283,7 @@ def resolve_key(ws: str, provider: str, slot: str = "") -> str:
         env_slot = os.environ.get(f"STUDIO_KEY_SLOT_{slot.upper().replace('-', '_')}")
         if env_slot:
             return env_slot
-        raise StudioError(f"Key '{slot}' is not set for this workspace. Add it in Keys.")
+        raise StudioError(f"Key '{slot}' is not set for this workspace. Add it in Settings & keys.")
     default_slot = get_config(ws).get("default_key_slot", "")
     for candidate in (default_slot,):
         item = secrets.get(candidate) if candidate else None
@@ -295,7 +295,7 @@ def resolve_key(ws: str, provider: str, slot: str = "") -> str:
     env = os.environ.get(f"STUDIO_KEY_{provider.upper()}")
     if env:
         return env
-    raise StudioError(f"No API key for {provider}. Add one in Keys (or set STUDIO_KEY_{provider.upper()}).")
+    raise StudioError(f"No API key for {provider}. Add one in Settings & keys (or set STUDIO_KEY_{provider.upper()}).")
 
 
 # ── pipelines ─────────────────────────────────────────────────────────────────

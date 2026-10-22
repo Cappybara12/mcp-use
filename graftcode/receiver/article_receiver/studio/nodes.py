@@ -465,15 +465,15 @@ def describe_types() -> list[dict]:
 def default_pipeline(live: bool = False) -> dict:
     """The starter flow for a new workspace. 'demo' runs offline on bundled samples; 'live' is for a real blog."""
     if live:
-        order = [("topic", 0, 160), ("corpus", 260, 20), ("rulebook", 260, 200), ("keywords", 260, 380), ("outline", 520, 160),
-                 ("write", 780, 160), ("seo", 1040, 160), ("review", 1300, 160), ("reddit", 1560, 60), ("publish", 1560, 260)]
+        order = [("topic", 0, 160), ("corpus", 234, 20), ("rulebook", 234, 200), ("keywords", 234, 380), ("outline", 468, 160),
+                 ("write", 702, 160), ("seo", 936, 160), ("review", 1170, 160), ("reddit", 1404, 60), ("publish", 1404, 260)]
         pairs = [("topic", "keywords"), ("corpus", "rulebook"), ("rulebook", "outline"), ("keywords", "outline"),
                  ("outline", "write"), ("write", "seo"), ("seo", "review"), ("review", "reddit"), ("review", "publish")]
         overrides = {"corpus": {"provider": "direct", "site_url": ""}, "keywords": {"provider": "manual"}}
     else:
-        order = [("topic", 0, 120), ("rss", 0, 300), ("corpus", 260, 20), ("rulebook", 260, 200), ("keywords", 260, 380),
-                 ("scrape", 520, 300), ("outline", 520, 120), ("write", 780, 120), ("seo", 1040, 120), ("review", 1300, 120),
-                 ("reddit", 1560, 20), ("publish", 1560, 220)]
+        order = [("topic", 0, 120), ("rss", 0, 300), ("corpus", 234, 20), ("rulebook", 234, 200), ("keywords", 234, 380),
+                 ("scrape", 468, 300), ("outline", 468, 120), ("write", 702, 120), ("seo", 936, 120), ("review", 1170, 120),
+                 ("reddit", 1404, 20), ("publish", 1404, 220)]
         pairs = [("topic", "keywords"), ("topic", "scrape"), ("rss", "scrape"), ("corpus", "rulebook"), ("rulebook", "outline"),
                  ("keywords", "outline"), ("scrape", "outline"), ("outline", "write"), ("write", "seo"), ("seo", "review"),
                  ("review", "reddit"), ("review", "publish")]

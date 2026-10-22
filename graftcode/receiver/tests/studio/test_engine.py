@@ -341,3 +341,19 @@ def test_web_search_needs_tinyfish_and_ssrf_blocked_urls_are_reported(api, ws, m
     for node in ("topic", "rss", "scrape"):
         run = api.run_node(ws, run["id"], node)
     assert run["nodes"]["scrape"]["status"] == "error" and "not public" in run["nodes"]["scrape"]["error"]
+
+
+def test_saving_draft_edits_recomputes_the_seo_report(api, ws):
+    run = api.run_all(ws, start(api, ws)["id"])
+    before = api.get_draft(ws, run["id"])["seo"]
+    edited = before and api.get_draft(ws, run["id"])["markdown"] + "\nSee [a source](https://example.org/x).\n"
+    after = api.save_draft(ws, run["id"], edited)
+    assert "a source" in after["markdown"] and after["seo"]["score"] >= 0
+    assert api.get_draft(ws, run["id"])["markdown"] == after["markdown"]          # it was really stored
+    for bad in ("", "   "):
+        with pytest.raises(StudioError, match="empty"):
+            api.save_draft(ws, run["id"], bad)
+    with pytest.raises(StudioError, match="too large"):
+        api.save_draft(ws, run["id"], "x" * 400_001)
+    with pytest.raises(StudioError):
+        api.save_draft(ws, "nosuchrun", "# hi")

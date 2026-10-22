@@ -982,6 +982,10 @@ class ArticlePipelineService:
         """The draft of a run with a fresh SEO report."""
         return json.dumps(_studio().get_draft(ws, run_id))
 
+    def studio_save_draft(self, ws: str, run_id: str, markdown: str) -> str:
+        """Save edits to a run's draft and return it with a fresh SEO report."""
+        return json.dumps(_studio().save_draft(ws, run_id, markdown))
+
     def studio_run_due(self, ws: str) -> str:
         """Create drafts now for every plan item whose date has passed."""
         return json.dumps(_studio().run_due(ws))

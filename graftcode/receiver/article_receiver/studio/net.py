@@ -214,7 +214,7 @@ def raise_for_status(resp: Response, service: str) -> None:
         return
     hints = {
         400: "the request was rejected as invalid",
-        401: "the API key was rejected (check it in Keys)",
+        401: "the API key was rejected (check it in Settings & keys)",
         402: "no credits left or the free allowance is used up",
         403: "access was refused for this key or account",
         404: "not found",

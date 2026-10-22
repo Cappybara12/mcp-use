@@ -31,7 +31,15 @@ pipeline to run this repo:** without it the receiver runs in *demo mode* on bund
 | `runScanner` | Runs the scanner project's `main.py --scan` | Reports `skipped (demo mode)` |
 | `pushToGithub` | Opens a real GitHub PR | Raises an error (needs the pipeline) |
 
-## The dashboard
+## Pipeline Studio
+
+Beyond the original demo, the dashboard includes a visual **Pipeline Studio**: build a content pipeline from steps
+(RSS, web research, learn-from-your-blog rules, keyword research, outline, write, SEO check, human review, Reddit
+ideas, GitHub pull request), run it and watch each step finish, plan content on a calendar by drag and drop,
+schedule drafts with a GitHub Action, and manage several blogs with their own API keys. It works offline out of
+the box. See **[STUDIO.md](STUDIO.md)**.
+
+## The original dashboard
 
 Open <http://localhost:5173> after `start.sh`. It calls the Python receiver straight from the
 browser through the generated Graft (WebSocket).

@@ -192,6 +192,17 @@ def get_draft(ws: str, run_id: str) -> dict:
     return {"markdown": markdown, "seo": report}
 
 
+def save_draft(ws: str, run_id: str, markdown: str) -> dict:
+    """Save a person's edits to a run's draft and return it with a fresh SEO report."""
+    if not isinstance(markdown, str) or not markdown.strip():
+        raise StudioError("The draft cannot be empty.")
+    if len(markdown) > 400_000:
+        raise StudioError("The draft is too large.")
+    store.load_run(ws, run_id)                      # the run must exist
+    store.save_draft(ws, run_id, markdown.rstrip() + "\n")
+    return get_draft(ws, run_id)
+
+
 # ── scheduling ────────────────────────────────────────────────────────────────
 
 def run_due(ws: str) -> list:
