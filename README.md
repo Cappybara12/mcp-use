@@ -56,5 +56,8 @@ To drive this real pipeline instead, point it at this folder (use an absolute pa
 cd graftcode && WAYZYY_WRITER_DIR="$(cd .. && pwd)" bash scripts/start.sh
 ```
 
+The `graftcode/` folder is MIT-licensed ([`graftcode/LICENSE`](graftcode/LICENSE)); that license covers
+that folder only.
+
 See [`graftcode/README.md`](graftcode/README.md) for the architecture, the MCP setup, the YAML
 config that retargets it to another niche, and the known limits.

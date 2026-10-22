@@ -8,6 +8,7 @@ version = "1.0.0"
 description = "Graftcode receiver for the Wayzyy content pipeline"
 readme = "README.md"
 requires-python = ">=3.10"
+license = { text = "MIT" }
 dependencies = ["PyYAML>=6.0"]
 
 [project.optional-dependencies]

@@ -8,7 +8,31 @@ interface Props {
 interface Bench {
   graft: number[]
   mcp: number[]
-  sample: unknown
+  matches: number
+}
+
+// Fields that legitimately differ between two calls made a moment apart.
+const VOLATILE_KEYS = new Set(['timestamp'])
+
+const withoutVolatile = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(withoutVolatile)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([k]) => !VOLATILE_KEYS.has(k))
+        .map(([k, v]) => [k, withoutVolatile(v)]),
+    )
+  }
+  return value
+}
+
+const sameValue = (a: unknown, b: unknown): boolean => {
+  if (a === b) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || !a || !b) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  const ka = Object.keys(a as object)
+  const kb = Object.keys(b as object)
+  return ka.length === kb.length && ka.every(k => k in (b as object) && sameValue((a as any)[k], (b as any)[k]))
 }
 
 const RUNS = 20
@@ -35,15 +59,16 @@ export default function Architecture({ statusLabel }: Props) {
       await callMcp('get_pipeline_status')
       const graft: number[] = []
       const mcp: number[] = []
-      let sample: unknown = null
+      let matches = 0
       for (let i = 0; i < RUNS; i++) {
         const g = await callGraft('getPipelineStatus')
         graft.push(g.ms)
         const m = await callMcp('get_pipeline_status')
         mcp.push(m.ms)
-        sample = sample ?? m.data
+        // Compare the two responses field by field, ignoring fields that change between calls.
+        if (sameValue(withoutVolatile(g.data), withoutVolatile(m.data))) matches++
       }
-      setBench({ graft, mcp, sample })
+      setBench({ graft, mcp, matches })
     } catch (e: any) {
       setBenchError(String(e?.message ?? e))
     } finally {
@@ -106,13 +131,14 @@ The Graft is generated from the Python class; MCP is the Gateway's built-in endp
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginTop: 16 }}>
             {stat('Graft median', `${fmt(median(bench.graft))} ms`, `p95 ${fmt(p95(bench.graft))} ms · n=${RUNS}`, 'var(--green)')}
             {stat('MCP median', `${fmt(median(bench.mcp))} ms`, `p95 ${fmt(p95(bench.mcp))} ms · n=${RUNS}`, '#7c3aed')}
-            {stat('Same answer', JSON.stringify(bench.sample).length > 2 ? 'yes' : 'no', 'MCP returned the Python method\'s result', 'var(--accent)')}
+            {stat('Graft = MCP', `${bench.matches}/${RUNS}`, 'responses identical, ignoring the timestamp field', bench.matches === RUNS ? 'var(--green)' : 'var(--red)')}
             {stat('MCP tools', tools ? String(tools.length) : '…', 'from the gateway, no bridge process', 'var(--accent)')}
           </div>
         )}
         <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 12 }}>
-          Timings include a local round trip and Python execution on this machine. They say nothing about
-          network latency or a REST comparison, because this repo no longer has a REST path to compare against.
+          These are local Graft-versus-MCP measurements: each includes a round trip on this machine plus the
+          Python execution. They say nothing about network latency, and there is no REST comparison because
+          this repo no longer has a REST path to measure.
         </div>
       </div>
 
