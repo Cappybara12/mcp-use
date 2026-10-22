@@ -8,6 +8,10 @@ brand:
   description: Goa vacation rental & travel marketplace
   # The style check expects articles to mention this word. Leave empty to skip the check.
   topic_keyword: Goa
+  # Read by the article pipeline when it shares this file (prompts, closing call to action).
+  niche: Goa travel
+  offering: villa or vacation rental
+  offering_plural: villas, beach houses, and homestays
   # Prompt used when research is skipped. {topic} and {brand} are substituted.
   fallback_research_prompt: "Topic: {topic}. Write a comprehensive guide for {brand}'s audience based on your knowledge."
 

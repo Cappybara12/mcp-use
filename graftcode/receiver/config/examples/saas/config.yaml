@@ -7,6 +7,9 @@ brand:
   name: Acme Analytics
   description: Product analytics for B2B SaaS teams
   topic_keyword: analytics
+  niche: B2B SaaS product analytics
+  offering: analytics workspace
+  offering_plural: analytics workspaces
   fallback_research_prompt: "Topic: {topic}. Write a practical, example-led article for {brand} readers."
 
 categories:

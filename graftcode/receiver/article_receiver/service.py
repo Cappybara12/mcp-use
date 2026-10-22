@@ -25,6 +25,10 @@ _DEFAULT_CONFIG = {
         "name": "Wayzyy",
         "description": "Goa vacation rental & travel marketplace",
         "topic_keyword": "Goa",
+        # Read by the article pipeline (agent/config.py) when it shares this file.
+        "niche": "Goa travel",
+        "offering": "villa or vacation rental",
+        "offering_plural": "villas, beach houses, and homestays",
         "fallback_research_prompt": "Topic: {topic}. Write a comprehensive guide for {brand}'s audience based on your knowledge.",
     },
     "categories": {
@@ -639,10 +643,14 @@ class ArticlePipelineService:
             if required.lower() in text:
                 passed_checks.append(f"Includes required section: {required}")
 
-        keyword = CONFIG["brand"]["topic_keyword"].strip().lower()
+        # The article's primary keyword is only known if the draft's front matter records it.
+        # (The brand/destination keyword is deliberately not used: "Goa" would exceed any limit.)
+        front = re.match(r"^---\n(.*?)\n---", raw_text, re.DOTALL)
+        keyword_match = re.search(r"^(?:primary_)?keyword:\s*(.+)$", front.group(1), re.MULTILINE) if front else None
+        keyword = keyword_match.group(1).strip().strip("\"'").lower() if keyword_match else ""
         keyword_uses = len(re.findall(rf"\b{re.escape(keyword)}\b", text)) if keyword else 0
         if keyword and keyword_uses <= editorial["maximum_primary_keyword_uses"]:
-            passed_checks.append(f"Primary keyword frequency is within limit ({keyword_uses})")
+            passed_checks.append(f"Primary keyword '{keyword}' is within the limit ({keyword_uses} uses)")
 
         # Score calculation
         deductions = len(found_cliches) * 4 + min(passive_matches, 5) * 2
@@ -669,7 +677,10 @@ class ArticlePipelineService:
                 [f"Replace cliché '{w}' with a specific detail." for w in found_cliches[:3]]
                 + ([f"Add at least {editorial['minimum_words']} words (currently {word_count})."] if word_count < editorial["minimum_words"] else [])
                 + (["Add source links for factual claims."] if editorial["require_sources"] and not re.search(r"https?://", raw_text) else [])
+                + ([f"Add an image credit that mentions '{attribution}'."] if editorial["require_image_attribution"] and attribution and attribution.lower() not in text else [])
                 + ([f"Add required section: {s}." for s in missing_sections])
+                + ([f"Reduce uses of '{keyword}' (found {keyword_uses}, limit {editorial['maximum_primary_keyword_uses']})."] if keyword and keyword_uses > editorial["maximum_primary_keyword_uses"] else [])
+                + ([f"Rewrite passive phrases (found {passive_matches})."] if passive_matches else [])
             ),
         ))
 

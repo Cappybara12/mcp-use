@@ -89,7 +89,7 @@ PIPELINE_CONFIG=my-blog.yaml bash scripts/start.sh
 
 | Section | What it controls |
 |---|---|
-| `brand` | Name and description (shown in the dashboard), the topic keyword the style check looks for, the fallback research prompt |
+| `brand` | Name and description (shown in the dashboard), the topic keyword the style check looks for, the fallback research prompt, and `niche` / `offering` / `offering_plural`, which the article pipeline uses in its prompts and closing call to action (set them, or a new niche inherits Wayzyy's) |
 | `categories` | How queue topics are grouped (first matching keyword rule wins, else `default`) |
 | `suggestion.tiers` | Which topic keywords the "suggest next article" ranking favours, highest priority first |
 | `style` | Banned words and openers, the attribution keyword (for example a stock-photo site), the publish threshold |
@@ -198,6 +198,8 @@ legacy/                                the superseded FastMCP bridge (comparison
 - **Quality gates are configurable.** `editorial.minimum_words`, `maximum_primary_keyword_uses`,
   `required_sections`, `require_sources`, `require_image_attribution`, and `require_human_review`
   are project-level controls. They produce audit flags; a human still decides whether to publish.
+  Every point the audit deducts comes with a recommendation. The keyword-frequency limit applies only when a
+  draft records its own `primary_keyword:` in its front matter, because the audit cannot know it otherwise.
 - **Security.** The gateway only allows `http://localhost:5173` by default (`GRAFT_CORS`), has
   no authentication (including on `/mcp`), and `pushToGithub` can open PRs when configured. Do not expose it publicly.
 - **Typed returns in the browser too.** The same opaque-handle behaviour applies to the browser
