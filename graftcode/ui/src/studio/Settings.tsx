@@ -115,6 +115,7 @@ export function SettingsView() {
           <input className="grow" type="password" autoComplete="off" placeholder="Paste the key" value={key} onChange={e => setKey(e.target.value)} />
           <button className="btn-secondary" onClick={addKey} disabled={!slot.trim() || !key.trim()}>Save key</button>
         </div>
+        <div className="field-help">Can't paste into the box above? In a terminal, run <code>bash scripts/add-key.sh {wsId} openai --default</code> (from the <code>graftcode</code> folder). It asks for the key with hidden input and saves it here.</div>
         <div className="field-help">For DataForSEO (the data OpenSEO uses), paste the Base64 value from its API Access page or <code>login:password</code>. TinyFish keys come from agent.tinyfish.ai.</div>
       </section>
 

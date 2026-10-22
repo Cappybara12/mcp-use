@@ -488,3 +488,37 @@ def test_write_article_summary_carries_reddit_warnings(api, ws):
     api.save_pipeline(ws, json.dumps(pipe))
     out = api.decide(ws, api.write_article(ws, "Compare tools", "compare tools")["run_id"], "approve", "", False)
     assert any("disclosure" in w.lower() for w in out["reddit_warnings"])
+
+
+# ── set-key command (keeps keys out of the browser, the shell history and the screen) ──
+
+def test_set_key_command_saves_a_key_and_can_make_it_the_default(api, ws, monkeypatch, capsys):
+    monkeypatch.setattr(cli.getpass, "getpass", lambda prompt: "  sk-test-0123456789  ")
+    assert cli.main(["set-key", "--workspace", ws, "--provider", "openai", "--name", "main", "--default"]) == 0
+    out = capsys.readouterr().out
+    assert "sk-test-0123456789" not in out and "••••6789" in out and "default AI" in out
+    cfg = store.get_config(ws)
+    assert (cfg["default_provider"], cfg["default_key_slot"]) == ("openai", "main")
+    assert store.resolve_key(ws, "openai") == "sk-test-0123456789"        # trimmed and usable by the steps
+
+
+def test_set_key_reads_from_stdin_for_scripts(api, ws, monkeypatch, capsys):
+    import io
+    monkeypatch.setattr("sys.stdin", io.StringIO("tf-key-abcdef123456\n"))
+    assert cli.main(["set-key", "--workspace", ws, "--provider", "tinyfish", "--stdin"]) == 0
+    assert "tf-key-abcdef123456" not in capsys.readouterr().out
+    assert store.resolve_key(ws, "tinyfish") == "tf-key-abcdef123456"
+    assert store.get_config(ws)["default_provider"] == "demo"             # tinyfish is not an AI provider: no default change
+
+
+@pytest.mark.parametrize("args", [["--workspace", "nope-ws", "--provider", "openai"], ["--workspace", "WS", "--provider", "notaprovider"]])
+def test_set_key_rejects_bad_targets(api, ws, monkeypatch, capsys, args):
+    monkeypatch.setattr(cli.getpass, "getpass", lambda prompt: "sk-test-0123456789")
+    args = [ws if a == "WS" else a for a in args]
+    assert cli.main(["set-key", *args]) == 1 and "error:" in capsys.readouterr().err
+
+
+def test_set_key_rejects_an_empty_key(api, ws, monkeypatch, capsys):
+    monkeypatch.setattr(cli.getpass, "getpass", lambda prompt: "   ")
+    assert cli.main(["set-key", "--workspace", ws, "--provider", "openai"]) == 1
+    assert store.list_secrets(ws) == []

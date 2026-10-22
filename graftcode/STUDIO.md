@@ -78,6 +78,11 @@ You can keep **several keys** (name them) and choose which one each step uses, o
 workspace. For DataForSEO, paste the Base64 value from its API Access page (what OpenSEO calls
 `DATAFORSEO_API_KEY`) or `login:password`.
 
+**Adding a key from the terminal.** If you would rather not paste a key into the browser, run
+`bash scripts/add-key.sh WORKSPACE PROVIDER [--default]` from this folder. It asks for the key with hidden input (nothing
+is echoed or kept in shell history) and saves it for that workspace; `--default` also makes that provider the
+workspace's default AI. For scripts, `--stdin` reads the key from standard input.
+
 > **What has and has not been verified.** The offline flow, the engine, the rulebook learning, the SEO checks,
 > scheduling, the exports and the UI are tested end to end (256 automated tests, plus a click-through of the
 > dashboard in a browser). The calls to OpenAI, Anthropic, Groq, Moonshot, OpenRouter, TinyFish, DataForSEO and
