@@ -55,5 +55,18 @@ style:
   attribution_keyword: pexels
   publish_threshold: 85
 
+editorial:
+  minimum_words: 900
+  maximum_primary_keyword_uses: 8
+  required_sections: [FAQ]
+  require_sources: true
+  require_image_attribution: true
+  require_human_review: true
+
+editorial_rules:
+  tone: "Helpful, specific, practical, and honest; avoid generic praise."
+  required_elements: [concrete examples, source links, original recommendations]
+  banned_phrases: ["in today's fast-paced world", "unlock the power of"]
+
 # Optional: folder (relative to this file) with review/ and drafts/ used in demo mode.
 # data_dir: data

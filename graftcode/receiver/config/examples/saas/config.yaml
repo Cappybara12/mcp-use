@@ -31,4 +31,17 @@ style:
   attribution_keyword: ""
   publish_threshold: 90
 
+editorial:
+  minimum_words: 900
+  maximum_primary_keyword_uses: 8
+  required_sections: [FAQ, examples]
+  require_sources: true
+  require_image_attribution: false
+  require_human_review: true
+
+editorial_rules:
+  tone: "Clear, evidence-led, practical, and written for working SaaS teams."
+  required_elements: [concrete examples, source links, implementation trade-offs]
+  banned_phrases: ["in today's fast-paced world", "unlock the power of"]
+
 data_dir: data

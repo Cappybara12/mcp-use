@@ -104,8 +104,16 @@ PIPELINE_CONFIG=receiver/config/examples/saas/config.yaml \
 WAYZYY_WRITER_DIR=/nonexistent WAYZYY_SCANNER_DIR=/nonexistent bash scripts/start.sh
 ```
 
-What the config does **not** cover: the real article pipeline's prompts and brand voice. Those
-live in the separate pipeline project you attach with `WAYZYY_WRITER_DIR`.
+The `editorial` and `editorial_rules` sections also let a project owner control the quality
+contract: minimum length, keyword frequency, required sections, source links, image attribution,
+human review, tone, required elements, and banned phrases. These rules are injected into the
+planner/writer prompts and enforced again by the receiver's style audit.
+
+The site publisher remains an adapter: `agent/site_publisher.py` currently targets Wayzyy's
+React/TSX blog shape. To publish to another site, keep the receiver and editorial config but
+replace that adapter for the target repository, then set `PUBLISHER_MODULE` and
+`PUBLISHER_FUNCTION` in `.env`. The adapter should return the same fields (`slug`, `branch`,
+`commit_hash`, `files_modified`, and `message`) so the dashboard can show the PR result.
 
 ## Attach the real pipeline (optional)
 
@@ -187,6 +195,9 @@ legacy/                                the superseded FastMCP bridge (comparison
   resolve outside the drafts folder are rejected for every method that reads or writes a draft (regression
   tests in `receiver/tests/test_security.py`). The gateway itself still has no authentication, so this
   limits what a caller can reach but does not replace authentication.
+- **Quality gates are configurable.** `editorial.minimum_words`, `maximum_primary_keyword_uses`,
+  `required_sections`, `require_sources`, `require_image_attribution`, and `require_human_review`
+  are project-level controls. They produce audit flags; a human still decides whether to publish.
 - **Security.** The gateway only allows `http://localhost:5173` by default (`GRAFT_CORS`), has
   no authentication (including on `/mcp`), and `pushToGithub` can open PRs when configured. Do not expose it publicly.
 - **Typed returns in the browser too.** The same opaque-handle behaviour applies to the browser
