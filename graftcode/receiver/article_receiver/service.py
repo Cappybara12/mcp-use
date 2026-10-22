@@ -11,6 +11,12 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from datetime import datetime
 
+# Pipeline Studio lives in a sibling package. The Graftcode gateway runs this module from a temp
+# copy, so scripts/run_gateway.sh passes the real folder in WAYZYY_RECEIVER_DIR.
+_RECEIVER_DIR = os.environ.get("WAYZYY_RECEIVER_DIR") or str(Path(__file__).resolve().parent.parent)
+if _RECEIVER_DIR not in sys.path:
+    sys.path.insert(0, _RECEIVER_DIR)
+
 try:
     import yaml
 except ImportError:  # pragma: no cover
@@ -266,6 +272,12 @@ class PullRequestResult:
     pr_url: str
     files_modified: list[str]
     message: str
+
+
+def _studio():
+    from article_receiver.studio import api
+
+    return api
 
 
 def _to_json(result) -> str:
@@ -840,3 +852,144 @@ class ArticlePipelineService:
             files_modified=[str(p) for p in (result.get("tsx_path"), result.get("hero_image_path")) if p],
             message="Real GitHub pull request created. Nothing was merged into main.",
         ))
+
+
+    # ── Pipeline Studio ─────────────────────────────────────────────────────────
+    # Thin wrappers over article_receiver.studio.api. Arguments are plain strings/booleans and every
+    # method returns JSON text. Secrets are write-only: no method ever returns an API key.
+
+    def studio_catalog(self) -> str:
+        """Node types, AI providers and plan statuses used by the Pipeline Studio."""
+        return json.dumps(_studio().catalog())
+
+    def studio_list_workspaces(self) -> str:
+        """List workspaces (one per blog or organization)."""
+        return json.dumps(_studio().list_workspaces())
+
+    def studio_create_workspace(self, name: str, site_url: str, niche: str, template: str) -> str:
+        """Create a workspace. template is 'demo' (offline samples) or 'live' (a real blog)."""
+        return json.dumps(_studio().create_workspace(name, site_url, niche, template))
+
+    def studio_get_workspace(self, ws: str) -> str:
+        """Workspace settings, saved key names (masked), pipelines and counts."""
+        return json.dumps(_studio().workspace(ws))
+
+    def studio_delete_workspace(self, ws: str) -> str:
+        """Delete a workspace and everything in it, including its saved keys."""
+        return json.dumps(_studio().delete_workspace(ws))
+
+    def studio_save_config(self, ws: str, patch_json: str) -> str:
+        """Update workspace settings (brand, voice prompt, categories, GitHub target, schedule)."""
+        return json.dumps(_studio().save_config(ws, patch_json))
+
+    def studio_set_secret(self, ws: str, slot: str, provider: str, key: str) -> str:
+        """Save an API key under a name for this workspace. Keys are never returned."""
+        return json.dumps(_studio().set_secret(ws, slot, provider, key))
+
+    def studio_delete_secret(self, ws: str, slot: str) -> str:
+        """Delete a saved API key."""
+        return json.dumps(_studio().delete_secret(ws, slot))
+
+    def studio_get_pipeline(self, ws: str, pipeline_id: str) -> str:
+        """A pipeline: its nodes, settings and connections."""
+        return json.dumps(_studio().get_pipeline(ws, pipeline_id))
+
+    def studio_save_pipeline(self, ws: str, pipeline_json: str) -> str:
+        """Save a pipeline after validating node types and connections."""
+        return json.dumps(_studio().save_pipeline(ws, pipeline_json))
+
+    def studio_new_pipeline(self, ws: str, name: str, live: bool) -> str:
+        """Create a new pipeline from the starter flow."""
+        return json.dumps(_studio().new_pipeline(ws, name, live))
+
+    def studio_delete_pipeline(self, ws: str, pipeline_id: str) -> str:
+        """Delete a pipeline (a workspace keeps at least one)."""
+        return json.dumps(_studio().delete_pipeline(ws, pipeline_id))
+
+    def studio_preview_prompt(self, ws: str, pipeline_id: str, node_id: str, run_id: str) -> str:
+        """The exact prompt an AI step would send, without calling the AI."""
+        return json.dumps(_studio().preview_prompt(ws, pipeline_id, node_id, run_id))
+
+    def studio_list_ideas(self, ws: str) -> str:
+        """Content ideas found by source steps (RSS, keywords) or added by hand."""
+        return json.dumps(_studio().list_ideas(ws))
+
+    def studio_add_idea(self, ws: str, title: str, keyword: str, category: str) -> str:
+        """Add a content idea."""
+        return json.dumps(_studio().add_idea(ws, title, keyword, category))
+
+    def studio_delete_idea(self, ws: str, idea_id: str) -> str:
+        """Remove a content idea."""
+        return json.dumps(_studio().delete_idea(ws, idea_id))
+
+    def studio_list_plan(self, ws: str) -> str:
+        """The content plan: items with a category, keyword, date and status."""
+        return json.dumps(_studio().list_plan(ws))
+
+    def studio_save_plan_item(self, ws: str, item_json: str) -> str:
+        """Create or update a plan item (title, category, keyword, scheduled_for, status)."""
+        return json.dumps(_studio().save_plan_item(ws, item_json))
+
+    def studio_delete_plan_item(self, ws: str, item_id: str) -> str:
+        """Remove a plan item."""
+        return json.dumps(_studio().delete_plan_item(ws, item_id))
+
+    def studio_get_rulebook(self, ws: str) -> str:
+        """The writing rulebook: learned and custom rules with their evidence."""
+        return json.dumps(_studio().get_rulebook(ws))
+
+    def studio_save_rulebook(self, ws: str, rulebook_json: str) -> str:
+        """Save an edited rulebook (enable, disable, edit or remove rules)."""
+        return json.dumps(_studio().save_rulebook(ws, rulebook_json))
+
+    def studio_add_custom_rule(self, ws: str, text: str, kind: str, phrases: str) -> str:
+        """Add your own rule. kind is 'note' or 'banned_phrases' (phrases is comma separated)."""
+        return json.dumps(_studio().add_custom_rule(ws, text, kind, phrases))
+
+    def studio_start_run(self, ws: str, pipeline_id: str, item_json: str) -> str:
+        """Start a run of a pipeline, optionally for one plan item."""
+        return json.dumps(_studio().start_run(ws, pipeline_id, item_json))
+
+    def studio_start_run_for_plan_item(self, ws: str, pipeline_id: str, item_id: str) -> str:
+        """Start a run for a plan item (this is the Create draft button)."""
+        return json.dumps(_studio().start_run_for_plan_item(ws, pipeline_id, item_id))
+
+    def studio_run_node(self, ws: str, run_id: str, node_id: str) -> str:
+        """Run one step of a run and return the updated run."""
+        return json.dumps(_studio().run_node(ws, run_id, node_id))
+
+    def studio_run_all(self, ws: str, run_id: str) -> str:
+        """Run every pending step; stops at the human review step or the first error."""
+        return json.dumps(_studio().run_all(ws, run_id))
+
+    def studio_get_run(self, ws: str, run_id: str) -> str:
+        """A run with the status and output of every step."""
+        return json.dumps(_studio().get_run(ws, run_id))
+
+    def studio_list_runs(self, ws: str) -> str:
+        """Recent runs."""
+        return json.dumps(_studio().list_runs(ws))
+
+    def studio_reset_from(self, ws: str, run_id: str, node_id: str) -> str:
+        """Clear a step and everything after it so it can be run again."""
+        return json.dumps(_studio().reset_from(ws, run_id, node_id))
+
+    def studio_review(self, ws: str, run_id: str, node_id: str, decision: str, notes: str, markdown: str) -> str:
+        """Approve or reject a draft at the review step; markdown optionally replaces the draft."""
+        return json.dumps(_studio().review(ws, run_id, node_id, decision, notes, markdown))
+
+    def studio_get_draft(self, ws: str, run_id: str) -> str:
+        """The draft of a run with a fresh SEO report."""
+        return json.dumps(_studio().get_draft(ws, run_id))
+
+    def studio_run_due(self, ws: str) -> str:
+        """Create drafts now for every plan item whose date has passed."""
+        return json.dumps(_studio().run_due(ws))
+
+    def studio_export_workflow(self, ws: str, cron: str) -> str:
+        """A GitHub Actions workflow that creates drafts on a schedule and opens a pull request."""
+        return json.dumps(_studio().export_workflow(ws, cron))
+
+    def studio_export_bundle(self, ws: str) -> str:
+        """The workspace files (never API keys) to commit next to the workflow."""
+        return json.dumps(_studio().export_bundle(ws))
