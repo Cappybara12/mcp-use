@@ -275,6 +275,38 @@ SYSTEM_REDDIT = (
 )
 
 
+REDDIT_POST_TYPES = {
+    "discussion": ("Discussion", "A discussion post: a specific title, 2 to 3 lines of context, your honest take, and one open-ended question. No link in the post."),
+    "comparison_table": ("Comparison with a table", "A comparison post with a Markdown table. Use a table only when there are at least 3 comparable items and at least 3 attributes; otherwise write prose. Then add 'what surprised me' and end with a question."),
+    "contrarian": ("Contrarian take", "A respectful contrarian take: state the common belief, give your reasoned disagreement using evidence from the article, acknowledge the strongest counter-argument, and ask what others have seen. Never insult people or brands."),
+    "competitor": ("Comparison with competitors", "A fair comparison with named alternatives. Use only facts that appear in the research notes, cite or link each source, say what you could not verify, include a 'where the alternatives are better' section, and disclose any affiliation. No disparagement and no unsupported claims."),
+    "howto": ("How-to", "A how-to post: the problem, numbered steps, common mistakes, and an invitation for readers to correct you."),
+    "feedback": ("Feedback request", "A feedback request: what you made, the specific thing you want feedback on, and a disclosure at the very top."),
+}
+NEEDS_DISCLOSURE = ("competitor", "feedback")
+
+
+def reddit_warnings(text: str, post_type: str, disclosure: str) -> list[str]:
+    """Plain-language problems in drafted Reddit posts. These are prompts to review, not a guarantee of anything."""
+    out = []
+    low = text.lower()
+    if post_type in NEEDS_DISCLOSURE and not disclosure.strip():
+        out.append("This post type should include a disclosure line saying how it relates to your or your client's brand. Add one on this step.")
+    elif disclosure.strip() and disclosure.strip().lower()[:40] not in low:
+        out.append("The disclosure line you set does not appear in the drafts. Add it before posting.")
+    if re.search(r"\bup-?vot(e|es|ing)\b", low):
+        out.append("A draft mentions upvotes. Never ask for votes.")
+    if re.search(r"\b(dm|pm) me\b|\bmessage me\b", low):
+        out.append("A draft asks people to message you. Many communities treat this as solicitation.")
+    for line in text.splitlines():
+        if re.match(r"^\s*\**title\**\s*:", line, re.I) and re.search(r"https?://", line):
+            out.append("A title contains a link. Most communities do not allow that.")
+            break
+    if post_type == "competitor" and not re.search(r"https?://", text):
+        out.append("A comparison with competitors should link its sources. None of the drafts do.")
+    return out
+
+
 def _opener(ctx: Ctx) -> str:
     for r in ctx.rulebook().get("rules", []):
         if r.get("kind") == "opener" and r.get("enabled", True):
@@ -324,9 +356,14 @@ def build_prompt(ctx: Ctx, ntype: str, config: dict, up: dict) -> tuple[str, str
         report = up.get("seo") or {}
         heads = [h["text"] for h in report.get("headings", []) if h["level"] == 2][:8]
         url = (ctx.cfg.get("site_url", "").rstrip("/") + "/" + report.get("slug", "")).strip("/") if ctx.cfg.get("site_url") else "(blog link)"
+        ptype = config.get("post_type") if config.get("post_type") in REDDIT_POST_TYPES else "discussion"
+        disclosure = (config.get("disclosure") or "").strip()
         parts = [f"TOPIC: {up.get('topic', '')}", f"ARTICLE TITLE: {report.get('title', up.get('topic', ''))}", f"ARTICLE URL: {url}",
-                 "ARTICLE SECTIONS: " + "; ".join(heads), ("SUBREDDITS TO CONSIDER: " + config["subreddits"]) if config.get("subreddits") else "",
-                 ("VOICE: " + voice) if voice else ""]
+                 "ARTICLE SECTIONS: " + "; ".join(heads), f"POST TYPE: {ptype}", "POST TYPE INSTRUCTIONS: " + REDDIT_POST_TYPES[ptype][1],
+                 ("COMPETITORS TO COMPARE: " + config["competitors"]) if config.get("competitors") else "",
+                 ("DISCLOSURE (put this at the top of every post, word for word): " + disclosure) if disclosure else "",
+                 ("SUBREDDITS TO CONSIDER: " + config["subreddits"]) if config.get("subreddits") else "",
+                 _research_block(up), ("VOICE: " + voice) if voice else ""]
     else:
         raise StudioError(f"{ntype} is not an AI node.")
     if extra:
@@ -345,7 +382,8 @@ def _ai_node(ntype: str):
         if ntype == "write":
             store.save_draft(ctx.ws, ctx.run["id"], text)
             return {"draft": text, "draft_words": words_in(text)}
-        return {"reddit": text}
+        warnings = reddit_warnings(text, config.get("post_type") or "discussion", config.get("disclosure") or "")
+        return {"reddit": text, "reddit_warnings": warnings}
     return run
 
 
@@ -443,8 +481,12 @@ NODE_TYPES: dict[str, dict] = {
     "review": {"label": "Human review", "group": "Approve", "description": "A person reads the draft and approves, edits or rejects it.", "run": run_review, "defaults": {}, "fields": []},
     "reddit": {"label": "Reddit post ideas", "group": "Promote", "description": "Draft Reddit posts that promote the article without spamming.",
                "run": _ai_node("reddit"),
-               "defaults": {"provider": "", "model": "", "key_slot": "", "subreddits": "", "prompt": ""},
-               "fields": [{"key": "subreddits", "label": "Subreddits to consider (optional)", "type": "text"},
+               "defaults": {"provider": "", "model": "", "key_slot": "", "post_type": "discussion", "disclosure": "", "competitors": "", "subreddits": "", "prompt": ""},
+               "fields": [{"key": "post_type", "label": "Kind of post", "type": "select", "options": [[k, v[0]] for k, v in REDDIT_POST_TYPES.items()],
+                           "help": "Discussion and contrarian posts start conversations; comparisons name competitors, so keep them factual and sourced."},
+                          {"key": "disclosure", "label": "Disclosure line", "type": "text", "help": "Say how the post relates to the brand, e.g. 'Disclosure: I run content for this company.' It is added to every draft."},
+                          {"key": "competitors", "label": "Competitors to compare (comparison posts)", "type": "text"},
+                          {"key": "subreddits", "label": "Subreddits to consider (optional)", "type": "text"},
                           *_llm_fields("", "Describe how you like to post. This overrides the default style.")]},
     "publish": {"label": "Publish", "group": "Publish", "description": "Open a GitHub pull request with the approved article. Never merges.",
                 "run": run_publish, "defaults": {"mode": "dry_run", "repo": "", "base_branch": "", "path_template": "", "append_faq_schema": True},

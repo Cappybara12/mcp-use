@@ -231,6 +231,9 @@ def _summary(ws: str, run: dict) -> dict:
     reddit = next((o["reddit"] for o in outputs if o.get("reddit")), "")
     if reddit:
         out["reddit_ideas"] = reddit[:6000]
+        warnings = next((o["reddit_warnings"] for o in outputs if o.get("reddit_warnings")), [])
+        if warnings:
+            out["reddit_warnings"] = warnings
     publish = next((o["result"] for o in outputs if o.get("result")), None)
     if publish:
         out["publish"] = {k: v for k, v in publish.items() if k != "markdown"}

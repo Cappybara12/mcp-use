@@ -31,7 +31,7 @@ export function NodeDrawer(p: Props) {
   const effectiveLlm = (p.config.provider as string) || p.wsConfig.default_provider || 'demo'
 
   const renderField = (f: NodeField) => {
-    const value = p.config[f.key] ?? f.default ?? ''
+    const value = p.config[f.key] ?? p.info.defaults[f.key] ?? f.default ?? ''
     const label = <label className="field-label" htmlFor={`f-${f.key}`}>{f.label}</label>
     const help = f.help ? <div className="field-help">{f.help}</div> : null
     switch (f.type) {

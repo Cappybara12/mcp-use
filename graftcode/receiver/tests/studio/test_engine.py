@@ -425,3 +425,66 @@ def test_long_drafts_are_truncated_in_the_reply(api, ws, monkeypatch):
     out = api.write_article(ws, "Long one", "long one")
     assert len(out["draft_markdown"]) == 500 and out["draft_truncated"] is True
     assert len(api.get_draft(ws, out["run_id"])["markdown"]) > 500         # the full draft is still available
+
+
+# ── Reddit post types, disclosure and warnings ────────────────────────────────
+
+def _reddit_run(api, ws, **cfg):
+    pipe = api.get_pipeline(ws, "blog-engine")
+    next(n for n in pipe["nodes"] if n["id"] == "reddit")["config"].update(cfg)
+    api.save_pipeline(ws, json.dumps(pipe))
+    run = api.run_all(ws, start(api, ws)["id"])
+    api.review(ws, run["id"], "review", "approve", "", "")
+    return api.run_node(ws, run["id"], "reddit")
+
+
+def test_reddit_post_type_and_disclosure_reach_the_prompt(api, ws):
+    run = _reddit_run(api, ws, post_type="competitor", competitors="Acme, Globex", disclosure="Disclosure: I run content for this brand.")
+    prompt = api.preview_prompt(ws, "blog-engine", "reddit", run["id"])["user"]
+    assert "POST TYPE: competitor" in prompt and "Use only facts that appear in the research notes" in prompt
+    assert "COMPETITORS TO COMPARE: Acme, Globex" in prompt and "Disclosure: I run content for this brand." in prompt
+    out = run["nodes"]["reddit"]["output"]
+    assert "Disclosure: I run content for this brand." in out["reddit"] and "Acme, Globex" in out["reddit"]
+
+
+def test_every_reddit_post_type_produces_different_drafts(api, ws):
+    from article_receiver.studio.nodes import REDDIT_POST_TYPES
+    seen = set()
+    for kind in REDDIT_POST_TYPES:
+        run = _reddit_run(api, ws, post_type=kind, disclosure="Disclosure: mine.")
+        text = run["nodes"]["reddit"]["output"]["reddit"]
+        assert run["nodes"]["reddit"]["status"] == "done" and "**Title:**" in text
+        seen.add(text)
+    assert len(seen) == len(REDDIT_POST_TYPES)
+    assert "| Option |" in _reddit_run(api, ws, post_type="comparison_table")["nodes"]["reddit"]["output"]["reddit"]
+
+
+def test_competitor_and_feedback_posts_without_a_disclosure_are_flagged(api, ws):
+    for kind in ("competitor", "feedback"):
+        warnings = _reddit_run(api, ws, post_type=kind, disclosure="")["nodes"]["reddit"]["output"]["reddit_warnings"]
+        assert any("disclosure" in w.lower() for w in warnings), kind
+    assert _reddit_run(api, ws, post_type="discussion", disclosure="")["nodes"]["reddit"]["output"]["reddit_warnings"] == []
+
+
+@pytest.mark.parametrize("text,needle", [
+    ("**Title:** Please upvote this\n**Body:** hi", "upvote"),
+    ("**Title:** Hello\n**Body:** DM me for the template", "message you"),
+    ("**Title:** Read https://example.com now\n**Body:** hi", "title contains a link"),
+])
+def test_reddit_warnings_catch_common_problems(text, needle):
+    from article_receiver.studio.nodes import reddit_warnings
+    assert any(needle in w.lower() for w in reddit_warnings(text, "discussion", ""))
+
+
+def test_competitor_comparisons_must_link_sources():
+    from article_receiver.studio.nodes import reddit_warnings
+    assert any("link its sources" in w for w in reddit_warnings("**Title:** X\n**Body:** no links", "competitor", "Disclosure: x"))
+    assert not any("link its sources" in w for w in reddit_warnings("**Title:** X\n**Body:** https://a.com/b", "competitor", "Disclosure: x"))
+
+
+def test_write_article_summary_carries_reddit_warnings(api, ws):
+    pipe = api.get_pipeline(ws, "blog-engine")
+    next(n for n in pipe["nodes"] if n["id"] == "reddit")["config"].update(post_type="competitor", disclosure="")
+    api.save_pipeline(ws, json.dumps(pipe))
+    out = api.decide(ws, api.write_article(ws, "Compare tools", "compare tools")["run_id"], "approve", "", False)
+    assert any("disclosure" in w.lower() for w in out["reddit_warnings"])

@@ -34,7 +34,8 @@ function summary(ntype: string, c: Record<string, any>): string {
     case 'scrape': return `${c.provider || 'direct'} · ${c.mode === 'read_urls' ? 'read URLs' : 'search + read'}`
     case 'corpus': return c.site_url ? String(c.site_url) : 'your blog'
     case 'keywords': return String(c.provider || 'manual')
-    case 'outline': case 'write': case 'reddit': return `${c.provider || 'default AI'}${c.model ? ' · ' + c.model : ''}`
+    case 'reddit': return `${String(c.post_type || 'discussion').replace('_', ' ')} · ${c.provider || 'default AI'}`
+    case 'outline': case 'write': return `${c.provider || 'default AI'}${c.model ? ' · ' + c.model : ''}`
     case 'publish': return c.mode === 'github_pr' ? 'GitHub pull request' : 'dry run'
     default: return ''
   }

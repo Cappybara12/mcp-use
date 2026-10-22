@@ -41,7 +41,7 @@ one person can manage several.
 | Outline / Write draft | AI steps. Each has a prompt box for your own instructions. | An AI provider key (or the offline Demo AI) |
 | SEO check | Scores the draft (title, headings, keyword use, links, meta description, FAQ) and builds FAQ schema. | No |
 | Human review | Pauses the run so a person reads, edits, and approves or rejects. | No |
-| Reddit post ideas | Drafts Reddit posts that promote the article without spamming, following **your** playbook. It never posts anything. | An AI provider key (or Demo AI) |
+| Reddit post ideas | Drafts Reddit posts that promote the article without spamming, following **your** playbook. Pick a kind of post: discussion, contrarian take, comparison with a table, comparison with competitors, how-to, or feedback request. Add a disclosure line that is put at the top of every draft. Warns about missing disclosures, vote requests, "DM me", links in titles and unsourced competitor claims. It never posts anything; you post from your own authorized accounts. | An AI provider key (or Demo AI) |
 | Publish | Opens a GitHub pull request with the approved article. Never merges. Defaults to a dry run. | GitHub token (for real PRs) |
 
 Every AI step (and the workspace as a whole) has a **prompt box**. The prompt each AI step sends is built from

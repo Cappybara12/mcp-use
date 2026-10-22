@@ -185,7 +185,12 @@ export function OutputView({ type, state }: { type: string; state: NodeState | u
       body = <div><div className="muted small">{out.draft_words} words. Open the Review step to read and edit it.</div><MarkdownBlock text={out.draft ?? ''} /></div>
       break
     case 'reddit':
-      body = <MarkdownBlock text={out.reddit ?? ''} />
+      body = (
+        <div>
+          {(out.reddit_warnings ?? []).map((w: string, i: number) => <div key={i} className="note">Check before posting: {w}</div>)}
+          <MarkdownBlock text={out.reddit ?? ''} />
+        </div>
+      )
       break
     case 'seo':
       body = out.seo ? <SeoView report={out.seo} /> : null

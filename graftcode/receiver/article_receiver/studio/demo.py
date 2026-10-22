@@ -30,7 +30,7 @@ def generate(task: str, system: str, user: str) -> str:
     if task == "write":
         return _article(topic, keyword, user)
     if task == "reddit":
-        return _reddit(topic, keyword, _field(user, "ARTICLE URL", "(blog link)"))
+        return _reddit(topic, keyword, _field(user, "ARTICLE URL", "(blog link)"), user)
     if task == "voice":
         return f"Voice summary ({DEMO_NOTE})\n- Plain, direct sentences.\n- Opens with a concrete problem.\n- Ends with a clear next step."
     return f"{DEMO_NOTE}\n\nTopic: {topic}"
@@ -81,14 +81,26 @@ def _article(topic: str, keyword: str, user: str) -> str:
     )
 
 
-def _reddit(topic: str, keyword: str, url: str) -> str:
-    return (
-        f"<!-- {DEMO_NOTE} -->\n"
-        f"### Post 1: lead with an insight\n**Title:** What I learned about {keyword} (and what I got wrong)\n"
-        f"**Body:** Two or three honest lessons in plain language, a question for the community, and the full write-up "
-        f"linked in a comment: {url}\n\n"
-        f"### Post 2: ask a question\n**Title:** How do you approach {keyword}?\n"
-        f"**Body:** Share your own approach first, ask for others', and mention you wrote more at {url} (your own blog).\n\n"
-        f"### Post 3: a short checklist\n**Title:** A short checklist for {keyword}\n"
-        f"**Body:** Five bullet points taken from the article, link in a comment, with disclosure.\n"
-    )
+def _reddit(topic: str, keyword: str, url: str, user: str = "") -> str:
+    ptype = _field(user, "POST TYPE", "discussion")
+    disclosure = _field(user, "DISCLOSURE (put this at the top of every post, word for word)", "")
+    competitors = _field(user, "COMPETITORS TO COMPARE", "the alternatives")
+    top = f"{disclosure}\n\n" if disclosure else ""
+    kw = keyword
+    drafts = {
+        "discussion": (f"What I learned about {kw} (and what I got wrong)",
+                       "Two or three honest lessons in plain language, then: what has your experience been?"),
+        "comparison_table": (f"{kw}: how the options compare",
+                             "| Option | Best for | Main downside |\n|---|---|---|\n| A | Small teams | Limited reporting |\n| B | Larger teams | Setup time |\n| C | Budget | Fewer features |\n\nWhat surprised me, then a question for the community."),
+        "contrarian": (f"Unpopular opinion: the usual advice on {kw} is backwards",
+                       "The common belief, my reasoning with evidence from the article, the best counter-argument, and: what have you seen?"),
+        "competitor": (f"{kw}: {competitors} compared fairly",
+                       f"Only facts I could verify, each linked ({url}). Where the alternatives are better. What I could not verify."),
+        "howto": (f"How to approach {kw}, step by step", "The problem, numbered steps, common mistakes. Please correct me where I am wrong."),
+        "feedback": (f"Looking for feedback on my {kw} write-up", "What I wrote, the specific thing I want feedback on, and what I am unsure about."),
+    }
+    title, body = drafts.get(ptype, drafts["discussion"])
+    out = f"<!-- {DEMO_NOTE} -->\n"
+    for n, (t, b) in enumerate([(title, body), (f"{title} (angle 2)", body)], 1):
+        out += f"### Post {n}\n**Title:** {t}\n**Body:**\n{top}{b}\nFull write-up in a comment (my own blog: {url}).\n\n"
+    return out
