@@ -53,9 +53,11 @@ def test_style_check_flags_cliches(service):
     assert audit["brand_score"] < 100
 
 
-def test_style_check_clean_draft_scores_100(service):
+def test_style_check_short_sample_draft_explains_its_score(service):
     audit = json.loads(service.run_style_check("sample-assagao"))
-    assert audit["brand_score"] == 100
+    # The bundled sample is short on purpose: the audit must say why it loses points.
+    assert audit["brand_score"] < 100
+    assert any("900 words" in r for r in audit["recommendations"])
     assert "Includes Pexels attribution" in audit["passed_checks"]
 
 

@@ -8,6 +8,10 @@ brand:
   description: Goa vacation rental & travel marketplace
   # The style check expects articles to mention this word. Leave empty to skip the check.
   topic_keyword: Goa
+  # Read by the article pipeline when it shares this file (prompts, closing call to action).
+  niche: Goa travel
+  offering: villa or vacation rental
+  offering_plural: villas, beach houses, and homestays
   # Prompt used when research is skipped. {topic} and {brand} are substituted.
   fallback_research_prompt: "Topic: {topic}. Write a comprehensive guide for {brand}'s audience based on your knowledge."
 
@@ -54,6 +58,19 @@ style:
   # Word that proves photo attribution is present (e.g. the stock photo site). Empty to skip.
   attribution_keyword: pexels
   publish_threshold: 85
+
+editorial:
+  minimum_words: 900
+  maximum_primary_keyword_uses: 8
+  required_sections: [FAQ]
+  require_sources: true
+  require_image_attribution: true
+  require_human_review: true
+
+editorial_rules:
+  tone: "Helpful, specific, practical, and honest; avoid generic praise."
+  required_elements: [concrete examples, source links, original recommendations]
+  banned_phrases: ["in today's fast-paced world", "unlock the power of"]
 
 # Optional: folder (relative to this file) with review/ and drafts/ used in demo mode.
 # data_dir: data

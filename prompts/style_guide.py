@@ -108,3 +108,16 @@ CLOSING CTA (always end with this after Final Thoughts):
 - If you state a timing in one section, do not contradict it elsewhere
 - Fact-check: if you say "8 AM opening", don't say "7 AM" later
 """
+
+# Project-specific rules are appended at runtime so another user can retarget the
+# writer from config.yaml without editing this prompt file.
+try:
+    from agent.config import editorial_contract
+    STYLE_GUIDE_SYSTEM_PROMPT += (
+        "\n\n== PROJECT EDITORIAL CONTRACT ==\n"
+        + editorial_contract()
+        + "\nIf the project brand is not Wayzyy, ignore Wayzyy-specific examples and CTAs above. "
+        "Use the configured brand, audience, offer, and publication rules instead."
+    )
+except Exception:
+    pass

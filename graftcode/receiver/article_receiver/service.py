@@ -1,4 +1,5 @@
 import glob as _glob
+import importlib
 import os
 import sys
 import re
@@ -24,6 +25,10 @@ _DEFAULT_CONFIG = {
         "name": "Wayzyy",
         "description": "Goa vacation rental & travel marketplace",
         "topic_keyword": "Goa",
+        # Read by the article pipeline (agent/config.py) when it shares this file.
+        "niche": "Goa travel",
+        "offering": "villa or vacation rental",
+        "offering_plural": "villas, beach houses, and homestays",
         "fallback_research_prompt": "Topic: {topic}. Write a comprehensive guide for {brand}'s audience based on your knowledge.",
     },
     "categories": {
@@ -51,6 +56,14 @@ _DEFAULT_CONFIG = {
         "attribution_keyword": "pexels",
         "publish_threshold": 85,
     },
+    "editorial": {
+        "minimum_words": 900,
+        "maximum_primary_keyword_uses": 8,
+        "required_sections": ["FAQ"],
+        "require_sources": True,
+        "require_image_attribution": True,
+        "require_human_review": True,
+    },
 }
 
 
@@ -74,7 +87,7 @@ def _load_config(path) -> dict:
         user = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         if not isinstance(user, dict):
             raise ValueError(f"Config error: {path} must contain a mapping at the top level.")
-        for section in ("brand", "categories", "suggestion", "style"):
+        for section in ("brand", "categories", "suggestion", "style", "editorial"):
             if section in user:
                 if not isinstance(user[section], dict):
                     raise ValueError(f"Config error: '{section}' must be a mapping.")
@@ -91,6 +104,15 @@ def _load_config(path) -> dict:
         _str_list(tier, f"suggestion.tiers[{i}]")
     _str_list(config["style"]["banned_words"], "style.banned_words")
     _str_list(config["style"]["banned_openers"], "style.banned_openers")
+    editorial = config["editorial"]
+    if not isinstance(editorial.get("minimum_words"), int) or editorial["minimum_words"] < 0:
+        raise ValueError("Config error: editorial.minimum_words must be a non-negative integer.")
+    if not isinstance(editorial.get("maximum_primary_keyword_uses"), int) or editorial["maximum_primary_keyword_uses"] < 0:
+        raise ValueError("Config error: editorial.maximum_primary_keyword_uses must be a non-negative integer.")
+    _str_list(editorial["required_sections"], "editorial.required_sections")
+    for key in ("require_sources", "require_image_attribution", "require_human_review"):
+        if not isinstance(editorial[key], bool):
+            raise ValueError(f"Config error: editorial.{key} must be true or false.")
     return config
 
 
@@ -583,7 +605,8 @@ class ArticlePipelineService:
         """
         file_path = _find_draft(filename)
 
-        text = file_path.read_text(encoding="utf-8", errors="ignore").lower()
+        raw_text = file_path.read_text(encoding="utf-8", errors="ignore")
+        text = raw_text.lower()
 
         style = CONFIG["style"]
         found_cliches = [w for w in style["banned_words"] if re.search(rf"\b{re.escape(w.lower())}\b", text)]
@@ -603,11 +626,44 @@ class ArticlePipelineService:
         attribution = style["attribution_keyword"]
         if attribution and attribution.lower() in text:
             passed_checks.append(f"Includes {attribution.title()} attribution")
+        elif not CONFIG["editorial"]["require_image_attribution"]:
+            passed_checks.append("Image attribution check disabled")
         if not found_cliches:
             passed_checks.append("No banned AI clichés")
 
+        editorial = CONFIG["editorial"]
+        word_count = len(raw_text.split())
+        if word_count >= editorial["minimum_words"]:
+            passed_checks.append(f"Meets minimum length ({editorial['minimum_words']} words)")
+        if editorial["require_sources"] and re.search(r"https?://", raw_text):
+            passed_checks.append("Includes source links")
+        elif not editorial["require_sources"]:
+            passed_checks.append("Source-link check disabled")
+        for required in editorial["required_sections"]:
+            if required.lower() in text:
+                passed_checks.append(f"Includes required section: {required}")
+
+        # The article's primary keyword is only known if the draft's front matter records it.
+        # (The brand/destination keyword is deliberately not used: "Goa" would exceed any limit.)
+        front = re.match(r"^---\n(.*?)\n---", raw_text, re.DOTALL)
+        keyword_match = re.search(r"^(?:primary_)?keyword:\s*(.+)$", front.group(1), re.MULTILINE) if front else None
+        keyword = keyword_match.group(1).strip().strip("\"'").lower() if keyword_match else ""
+        keyword_uses = len(re.findall(rf"\b{re.escape(keyword)}\b", text)) if keyword else 0
+        if keyword and keyword_uses <= editorial["maximum_primary_keyword_uses"]:
+            passed_checks.append(f"Primary keyword '{keyword}' is within the limit ({keyword_uses} uses)")
+
         # Score calculation
         deductions = len(found_cliches) * 4 + min(passive_matches, 5) * 2
+        if word_count < editorial["minimum_words"]:
+            deductions += 10
+        if editorial["require_sources"] and not re.search(r"https?://", raw_text):
+            deductions += 10
+        if editorial["require_image_attribution"] and attribution and attribution.lower() not in text:
+            deductions += 10
+        missing_sections = [s for s in editorial["required_sections"] if s.lower() not in text]
+        deductions += len(missing_sections) * 5
+        if keyword and keyword_uses > editorial["maximum_primary_keyword_uses"]:
+            deductions += 5
         score = max(60, 100 - deductions)
 
         return _to_json(StyleAudit(
@@ -617,7 +673,15 @@ class ArticlePipelineService:
             ai_cliches_found=found_cliches,
             passive_instances=passive_matches,
             passed_checks=passed_checks,
-            recommendations=[f"Replace cliché '{w}' with a specific detail." for w in found_cliches[:3]],
+            recommendations=(
+                [f"Replace cliché '{w}' with a specific detail." for w in found_cliches[:3]]
+                + ([f"Add at least {editorial['minimum_words']} words (currently {word_count})."] if word_count < editorial["minimum_words"] else [])
+                + (["Add source links for factual claims."] if editorial["require_sources"] and not re.search(r"https?://", raw_text) else [])
+                + ([f"Add an image credit that mentions '{attribution}'."] if editorial["require_image_attribution"] and attribution and attribution.lower() not in text else [])
+                + ([f"Add required section: {s}." for s in missing_sections])
+                + ([f"Reduce uses of '{keyword}' (found {keyword_uses}, limit {editorial['maximum_primary_keyword_uses']})."] if keyword and keyword_uses > editorial["maximum_primary_keyword_uses"] else [])
+                + ([f"Rewrite passive phrases (found {passive_matches})."] if passive_matches else [])
+            ),
         ))
 
     def run_scanner(self) -> str:
@@ -706,7 +770,15 @@ class ArticlePipelineService:
             raise RuntimeError("push_to_github needs the real article-writer pipeline (set WAYZYY_WRITER_DIR).")
         if str(WAYZYY_WRITER_DIR) not in sys.path:
             sys.path.insert(0, str(WAYZYY_WRITER_DIR))
-        from agent.site_publisher import publish_draft
+        publisher_module = os.environ.get("PUBLISHER_MODULE", "agent.site_publisher")
+        publisher_function = os.environ.get("PUBLISHER_FUNCTION", "publish_draft")
+        try:
+            publish_draft = getattr(importlib.import_module(publisher_module), publisher_function)
+        except (ImportError, AttributeError) as exc:
+            raise RuntimeError(
+                f"Could not load publisher {publisher_module}.{publisher_function}. "
+                "Set PUBLISHER_MODULE/PUBLISHER_FUNCTION to an adapter for your site."
+            ) from exc
 
         token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
         if not token:
