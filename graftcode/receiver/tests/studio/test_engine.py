@@ -357,3 +357,71 @@ def test_saving_draft_edits_recomputes_the_seo_report(api, ws):
         api.save_draft(ws, run["id"], "x" * 400_001)
     with pytest.raises(StudioError):
         api.save_draft(ws, "nosuchrun", "# hi")
+
+
+# ── one-call tools for AI assistants (MCP) ────────────────────────────────────
+
+def test_write_article_returns_a_reviewable_draft_in_one_call(api, ws):
+    out = api.write_article(ws, "How to read a retention table", "retention table")
+    assert out["status"] == "awaiting_review" and out["title"] == "How to read a retention table"
+    assert out["draft_markdown"].startswith("---") and 0 <= out["seo"]["score"] <= 100 and out["seo"]["slug"]
+    assert isinstance(out["seo"]["to_fix"], list) and "/" in out["seo"]["rules_followed"]
+    assert "explicitly approves" in out["next"] and "publish" not in out
+    assert out["steps"]["review"] == "awaiting_review" and out["steps"]["publish"] == "pending"
+
+
+@pytest.mark.parametrize("topic", ["", "   "])
+def test_write_article_needs_a_topic(api, ws, topic):
+    with pytest.raises(StudioError, match="topic"):
+        api.write_article(ws, topic, "")
+
+
+def test_write_article_reports_a_failing_step_instead_of_crashing(api, ws):
+    pipe = api.get_pipeline(ws, "blog-engine")
+    next(n for n in pipe["nodes"] if n["id"] == "write")["config"]["provider"] = "openai"      # no key saved
+    api.save_pipeline(ws, json.dumps(pipe))
+    out = api.write_article(ws, "Anything", "")
+    assert out["status"] == "error" and out["error"]["step"] == "write" and "No API key for openai" in out["error"]["message"]
+    assert "draft_markdown" not in out
+
+
+def test_approving_does_not_publish_unless_asked(api, ws):
+    run_id = api.write_article(ws, "A topic", "a topic")["run_id"]
+    out = api.decide(ws, run_id, "approve", "looks good", False)
+    assert out["steps"]["review"] == "done" and out["steps"]["reddit"] == "done"
+    assert out["steps"]["publish"] == "pending" and "publish" not in out and "Nothing was published" in out["publish_note"]
+    assert out["reddit_ideas"]
+    assert api.list_runs(ws)[0]["status"] != "done"                    # the run is not finished: publish still waits
+
+
+def test_publishing_through_decide_requires_publish_true(api, ws):
+    run_id = api.write_article(ws, "Another topic", "another topic")["run_id"]
+    out = api.decide(ws, run_id, "approve", "", True)
+    assert out["status"] == "done" and out["publish"]["mode"] == "dry_run"            # the default publish mode is a dry run
+
+
+def test_rejecting_through_decide_stops_everything(api, ws):
+    run_id = api.write_article(ws, "Rejected topic", "x")["run_id"]
+    out = api.decide(ws, run_id, "reject", "off brand", True)
+    assert out["status"] == "error" and "off brand" in out["error"]["message"]
+    assert out["steps"]["reddit"] == out["steps"]["publish"] == "pending"
+
+
+def test_decide_needs_a_draft_waiting_and_a_valid_decision(api, ws):
+    run = api.start_run(ws, "blog-engine", json.dumps(ITEM))
+    with pytest.raises(StudioError, match="No draft is waiting"):
+        api.decide(ws, run["id"], "approve", "", False)
+    run_id = api.write_article(ws, "Valid", "valid")["run_id"]
+    with pytest.raises(StudioError, match="approve"):
+        api.decide(ws, run_id, "maybe", "", False)
+    api.decide(ws, run_id, "approve", "", False)
+    with pytest.raises(StudioError, match="No draft is waiting"):
+        api.decide(ws, run_id, "approve", "", False)                         # cannot be decided twice
+
+
+def test_long_drafts_are_truncated_in_the_reply(api, ws, monkeypatch):
+    from article_receiver.studio import api as studio_api
+    monkeypatch.setattr(studio_api, "MAX_DRAFT_IN_REPLY", 500)
+    out = api.write_article(ws, "Long one", "long one")
+    assert len(out["draft_markdown"]) == 500 and out["draft_truncated"] is True
+    assert len(api.get_draft(ws, out["run_id"])["markdown"]) > 500         # the full draft is still available

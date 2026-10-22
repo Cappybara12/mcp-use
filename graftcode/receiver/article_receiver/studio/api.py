@@ -203,6 +203,80 @@ def save_draft(ws: str, run_id: str, markdown: str) -> dict:
     return get_draft(ws, run_id)
 
 
+# ── one-call tools for AI assistants (MCP) ────────────────────────────────────
+
+MAX_DRAFT_IN_REPLY = 20_000
+
+
+def _summary(ws: str, run: dict) -> dict:
+    """A compact, assistant-friendly view of a run: status, what to fix, the draft, and what to do next."""
+    out: dict = {"run_id": run["id"], "status": run["status"], "title": run.get("title", ""),
+                 "steps": {nid: s["status"] for nid, s in run["nodes"].items()}}
+    failed = next(((nid, s["error"]) for nid, s in run["nodes"].items() if s["status"] == "error"), None)
+    if failed:
+        out["error"] = {"step": failed[0], "message": failed[1]}
+    outputs = [s["output"] for s in run["nodes"].values() if s.get("output")]
+    report = next((o["seo"] for o in outputs if o.get("seo")), None)
+    if report:
+        out["seo"] = {"score": report["score"], "slug": report["slug"], "meta_description": report["meta_description"],
+                      "to_fix": [f"{c['label']}: {c['fix']}" for c in report["checks"] if not c["ok"]][:8],
+                      "rules_followed": f"{sum(1 for r in report['rules'] if r['ok'])}/{len(report['rules'])}"}
+    try:
+        draft = store.load_draft(ws, run["id"])
+        out["draft_markdown"] = draft[:MAX_DRAFT_IN_REPLY]
+        if len(draft) > MAX_DRAFT_IN_REPLY:
+            out["draft_truncated"] = True
+    except StudioError:
+        pass
+    reddit = next((o["reddit"] for o in outputs if o.get("reddit")), "")
+    if reddit:
+        out["reddit_ideas"] = reddit[:6000]
+    publish = next((o["result"] for o in outputs if o.get("result")), None)
+    if publish:
+        out["publish"] = {k: v for k, v in publish.items() if k != "markdown"}
+    if run["status"] == "awaiting_review":
+        out["next"] = ("The draft is ready for a person to review. Show it to the user. Only after the user explicitly "
+                       "approves, call studio_decide with decision 'approve' (or 'reject').")
+    return out
+
+
+def write_article(ws: str, topic: str, keyword: str) -> dict:
+    """Run the workspace's first pipeline for a topic, up to the human review step, and return the draft with its SEO report."""
+    topic = (topic or "").strip()
+    if not topic:
+        raise StudioError("Give a topic to write about.")
+    pipelines = store.list_pipelines(ws)
+    if not pipelines:
+        raise StudioError("This workspace has no pipeline.")
+    run = engine.start_run(ws, pipelines[0]["id"], {"title": topic, "keyword": (keyword or "").strip()})
+    return _summary(ws, engine.run_until_blocked(ws, run["id"]))
+
+
+def decide(ws: str, run_id: str, decision: str, notes: str, publish: bool) -> dict:
+    """Approve or reject the draft waiting for review. Approving continues the remaining steps (Reddit ideas),
+    and runs the Publish step only when publish is true."""
+    run = store.load_run(ws, run_id)
+    pipeline = store.get_pipeline(ws, run["pipeline_id"])
+    kinds = {n["id"]: n["type"] for n in pipeline["nodes"]}
+    review_id = next((nid for nid, st in run["nodes"].items() if st["status"] == "awaiting_review" and kinds.get(nid) == "review"), None)
+    if not review_id:
+        raise StudioError("No draft is waiting for review in this run.")
+    run = engine.review(ws, run_id, review_id, decision, notes, "")
+    if decision == "approve":
+        for nid in engine.topo_order(pipeline):
+            if run["nodes"][nid]["status"] != "pending":
+                continue
+            if kinds[nid] == "publish" and not publish:
+                continue                                  # publishing needs an explicit request
+            run = engine.run_node(ws, run_id, nid)
+            if run["nodes"][nid]["status"] in ("error", "awaiting_review"):
+                break
+    out = _summary(ws, engine.get_run(ws, run_id))
+    if decision == "approve" and not publish and "publish" not in out:
+        out["publish_note"] = "Approved. Nothing was published. To publish, run the Publish step from the dashboard."
+    return out
+
+
 # ── scheduling ────────────────────────────────────────────────────────────────
 
 def run_due(ws: str) -> list:

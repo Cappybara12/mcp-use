@@ -858,6 +858,14 @@ class ArticlePipelineService:
     # Thin wrappers over article_receiver.studio.api. Arguments are plain strings/booleans and every
     # method returns JSON text. Secrets are write-only: no method ever returns an API key.
 
+    def studio_write_article(self, ws: str, topic: str, keyword: str) -> str:
+        """Write an article for a topic in one call. Runs the workspace's pipeline up to human review and returns the draft, its SEO report and what to fix. Use studio_list_workspaces first to get ws."""
+        return json.dumps(_studio().write_article(ws, topic, keyword))
+
+    def studio_decide(self, ws: str, run_id: str, decision: str, notes: str, publish: bool) -> str:
+        """Approve or reject a draft that studio_write_article returned. Call this only after the user has explicitly decided. decision is 'approve' or 'reject'. Set publish to true only if the user asked to publish; otherwise nothing is published."""
+        return json.dumps(_studio().decide(ws, run_id, decision, notes, publish))
+
     def studio_catalog(self) -> str:
         """Node types, AI providers and plan statuses used by the Pipeline Studio."""
         return json.dumps(_studio().catalog())

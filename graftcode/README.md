@@ -165,6 +165,9 @@ bash scripts/mcp-check.sh
 }
 ```
 
+The Pipeline Studio adds `studio_*` tools; `studio_write_article` and `studio_decide` write and approve an article in
+one call each (see [STUDIO.md](STUDIO.md#use-it-from-claude-or-cursor-mcp)).
+
 MCP tool names are the Python method names (`suggest_next_article`, `write_article`, ...). Results
 come back as JSON text. The earlier hand-written FastMCP bridge is kept in `legacy/` as a
 "before" comparison only.

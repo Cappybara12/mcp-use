@@ -79,7 +79,7 @@ workspace. For DataForSEO, paste the Base64 value from its API Access page (what
 `DATAFORSEO_API_KEY`) or `login:password`.
 
 > **What has and has not been verified.** The offline flow, the engine, the rulebook learning, the SEO checks,
-> scheduling, the exports and the UI are tested end to end (247 automated tests, plus a click-through of the
+> scheduling, the exports and the UI are tested end to end (256 automated tests, plus a click-through of the
 > dashboard in a browser). The calls to OpenAI, Anthropic, Groq, Moonshot, OpenRouter, TinyFish, DataForSEO and
 > GitHub are tested against mock servers that follow each provider's published API documentation. They have
 > **not** been run against the real services with real accounts. Try each with a small test before relying on it.
@@ -96,6 +96,31 @@ Dragging an item onto a day sets when its draft should be created. Two ways to m
 
 Runs started by the scheduler stop at the review step, exactly like manual runs. In CI, a named key
 can be supplied as the environment variable `STUDIO_KEY_SLOT_<NAME>`, or by provider as `STUDIO_KEY_<PROVIDER>`.
+
+## Use it from Claude or Cursor (MCP)
+
+The Graftcode Gateway serves every Studio method as an MCP tool at `http://localhost:8081/mcp` (see the
+README for the Cursor and Claude Desktop setup). Two tools do the whole job in one call each:
+
+| Tool | What it does |
+|---|---|
+| `studio_write_article(ws, topic, keyword)` | Runs the workspace's pipeline for a topic up to human review and returns the draft, the SEO score, what to fix, and a `run_id`. |
+| `studio_decide(ws, run_id, decision, notes, publish)` | Approves or rejects that draft. Approving also runs the remaining steps (Reddit ideas). It runs the Publish step **only if `publish` is true**. |
+
+For example: *"List my workspaces, write an article on 'how to read a retention table' with the keyword
+'retention table' in demo-blog, and tell me what the SEO check wants fixed."* Then, after you have read the
+draft: *"Approve it, don't publish."*
+
+Everything else is available too: list workspaces and plan items, add ideas, read and edit the rulebook, preview
+prompts, create and run pipelines step by step, and export the GitHub Action.
+
+Things to know:
+
+- **Approval is yours.** The tool descriptions tell the assistant to wait for your explicit decision, but nothing
+  technical stops an assistant from calling `studio_decide`. Treat it like any tool you give an assistant.
+- **Admin tools are exposed too**, including deleting a workspace and saving API keys. Anything that can reach the
+  gateway can call them; the gateway has no authentication. Keep it on localhost.
+- With about 48 tools, some assistants work better if you tell them which two to use.
 
 ## Security model
 
