@@ -23,3 +23,11 @@ logs/
 # drafts generated in demo mode (keep only the bundled sample)
 receiver/sample_data/drafts/*
 !receiver/sample_data/drafts/2026-01-01_sample-assagao-cafe-guide.md
+
+# Studio data (keys!) lives outside the repo by default; never commit a local override
+.graft-studio/
+studio_data/
+
+# Python packaging output
+build/
+*.egg-info/

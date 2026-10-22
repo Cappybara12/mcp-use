@@ -28,6 +28,9 @@ if [ -f /opt/homebrew/etc/openssl@3/cert.pem ]; then
   export CURL_CA_BUNDLE=/opt/homebrew/etc/openssl@3/cert.pem
 fi
 
+# Pipeline Studio code lives next to service.py; the gateway runs service.py from a temp copy, so say where it is.
+export WAYZYY_RECEIVER_DIR="$ROOT/receiver"
+
 # CORS for the browser dashboard, including the MCP headers the browser must be able to read.
 mkdir -p "$ROOT/logs"
 CORS_FILE="$ROOT/logs/cors.config"

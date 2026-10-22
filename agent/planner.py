@@ -14,6 +14,7 @@ from prompts.article_format import (
     INTRO_PATTERNS,
     FAQ_GUIDELINES,
 )
+from agent.config import editorial_contract
 
 
 PLANNER_PROMPT = """
@@ -150,6 +151,7 @@ def generate_outline(topic: str, research_brief: str, existing_articles: list[st
         intro_patterns=INTRO_PATTERNS,
         format_guide=format_guide,
     )
+    prompt += "\n\nPROJECT EDITORIAL CONTRACT (these rules override generic defaults):\n" + editorial_contract()
 
     from agent.utils import call_with_fallback
     response = call_with_fallback(lambda: llm.invoke(prompt), lambda: fallback_llm.invoke(prompt))

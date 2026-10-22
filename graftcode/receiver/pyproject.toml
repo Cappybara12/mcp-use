@@ -11,6 +11,9 @@ requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = ["PyYAML>=6.0"]
 
+[project.scripts]
+graft-studio = "article_receiver.studio.cli:main"
+
 [project.optional-dependencies]
 env = ["python-dotenv"]
 mcp = ["fastmcp"]

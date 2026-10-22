@@ -17,8 +17,21 @@ import {
   ChevronRight,
   Scan,
   LightbulbIcon,
+  Network,
+  CalendarDays,
+  ScrollText,
+  Settings as SettingsIcon,
+  X,
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
+import './studio/studio.css'
+import { StudioProvider, useStudio } from './studio/StudioContext'
+import { PipelineView } from './studio/PipelineView'
+import { Planner } from './studio/Planner'
+import { RulebookView } from './studio/Rulebook'
+import { SettingsView } from './studio/Settings'
+import { WorkspaceBar } from './studio/WorkspaceBar'
+import { GraftStrip } from './studio/GraftStrip'
 import { callGraft, mcpListTools } from './graft'
 import Architecture from './Architecture'
 
@@ -57,7 +70,14 @@ interface RpcLog {
   status: 'ok' | 'err'
 }
 
-type Tab = 'overview' | 'queue' | 'writer' | 'auditor' | 'publisher' | 'architecture'
+type Tab = 'studio' | 'planner' | 'rulebook' | 'settings' | 'overview' | 'queue' | 'writer' | 'auditor' | 'publisher' | 'architecture'
+
+const STUDIO_NAV = [
+  { id: 'studio',   label: 'Pipeline',        icon: Network },
+  { id: 'planner',  label: 'Content planner', icon: CalendarDays },
+  { id: 'rulebook', label: 'Rulebook',        icon: ScrollText },
+  { id: 'settings', label: 'Settings & keys', icon: SettingsIcon },
+]
 
 const SIDEBAR_NAV = [
   { id: 'overview',      label: 'Dashboard',       icon: LayoutDashboard },
@@ -69,7 +89,16 @@ const SIDEBAR_NAV = [
 ]
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('overview')
+  return (
+    <StudioProvider>
+      <Shell />
+    </StudioProvider>
+  )
+}
+
+function Shell() {
+  const { detail, toasts, dismiss, connected } = useStudio()
+  const [tab, setTab] = useState<Tab>('studio')
   const [status, setStatus] = useState<PipelineStatus | null>(null)
   const [topics, setTopics] = useState<Topic[]>([])
   const [drafts, setDrafts] = useState<Draft[]>([])
@@ -220,6 +249,7 @@ export default function App() {
   }
 
   const brandName = status?.active_brand?.split(' (')[0] ?? 'Content Engine'
+  const isStudioTab = tab === 'studio' || tab === 'planner' || tab === 'rulebook' || tab === 'settings'
 
   const filtered = catFilter === 'All' ? topics : topics.filter(t => t.category === catFilter)
 
@@ -232,14 +262,26 @@ export default function App() {
           <div className="sidebar-logo-icon">
             <Zap size={16} color="#fff" />
           </div>
-          <span className="sidebar-logo-text">{brandName}</span>
+          <span className="sidebar-logo-text">Graft Studio</span>
           <span className="sidebar-badge">GRAFT</span>
+        </div>
+
+        <WorkspaceBar />
+
+        <div className="sidebar-section">
+          <div className="sidebar-section-label">Studio</div>
+          {STUDIO_NAV.map(({ id, label, icon: Icon }) => (
+            <button key={id} className={`sidebar-item ${tab === id ? 'active' : ''}`} onClick={() => setTab(id as Tab)}>
+              <Icon size={15} />
+              {label}
+            </button>
+          ))}
         </div>
 
         <div className="sidebar-divider" />
 
         <div className="sidebar-section">
-          <div className="sidebar-section-label">Content Engine</div>
+          <div className="sidebar-section-label">Original pipeline</div>
           {SIDEBAR_NAV.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -281,13 +323,14 @@ export default function App() {
         {/* Topbar */}
         <div className="topbar">
           <div className="topbar-left">
-            <span style={{ color: '#9ca3af' }}>{brandName}</span>
+            <span style={{ color: '#9ca3af' }}>{isStudioTab ? (detail?.config.name || 'Workspace') : brandName}</span>
             <ChevronRight size={14} color="#d1d5db" />
             <span className="topbar-breadcrumb">
-              {SIDEBAR_NAV.find(n => n.id === tab)?.label || 'Dashboard'}
+              {[...STUDIO_NAV, ...SIDEBAR_NAV].find(n => n.id === tab)?.label || 'Dashboard'}
             </span>
           </div>
           <div className="topbar-right">
+            {!isStudioTab && <>
             <button className="btn-ghost" onClick={refreshAll} disabled={loading}>
               <RefreshCw size={14} className={loading ? 'spin' : ''} />
               Sync
@@ -296,11 +339,18 @@ export default function App() {
               <Sparkles size={14} />
               Auto-Pilot Draft
             </button>
+            </>}
           </div>
         </div>
 
+        {!connected && <div className="note" style={{ margin: 12 }}>Cannot reach the Graftcode gateway. Start it with <code>bash scripts/start.sh</code>, then reload.</div>}
+
         {/* Page */}
-        <div className="page">
+        <div className={isStudioTab ? 'page full' : 'page'}>
+          {tab === 'studio' && <PipelineView onGoToKeys={() => setTab('settings')} />}
+          {tab === 'planner' && <Planner onOpenPipeline={() => setTab('studio')} />}
+          {tab === 'rulebook' && <RulebookView />}
+          {tab === 'settings' && <SettingsView />}
 
           {/* ══════════ OVERVIEW ══════════ */}
           {tab === 'overview' && (
@@ -315,7 +365,7 @@ export default function App() {
                 <div className="stat-card">
                   <div className="stat-label">
                     Graftcode Package
-                    <Layers size={14} color="#da1a60" />
+                    <Layers size={14} color="var(--graft)" />
                   </div>
                   <div className="stat-value accent" style={{ fontSize: 16, fontFamily: 'var(--font-mono)', letterSpacing: 0 }}>
                     @graft/pypi-wayzyy
@@ -326,7 +376,7 @@ export default function App() {
                 <div className="stat-card">
                   <div className="stat-label">
                     Pending Topics
-                    <Flame size={14} color="#d97706" />
+                    <Flame size={14} color="var(--accent)" />
                   </div>
                   <div className="stat-value">{status?.queue_stats.pending_topics_count ?? '—'}</div>
                   <div className="stat-meta">From social feeds & news</div>
@@ -335,7 +385,7 @@ export default function App() {
                 <div className="stat-card">
                   <div className="stat-label">
                     Drafts Generated
-                    <BookOpen size={14} color="#16a34a" />
+                    <BookOpen size={14} color="#111" />
                   </div>
                   <div className="stat-value green">{drafts.length || '0'}</div>
                   <div className="stat-meta">Drafts in the current pipeline</div>
@@ -344,9 +394,9 @@ export default function App() {
                 <div className="stat-card">
                   <div className="stat-label">
                     Claude MCP
-                    <Cpu size={14} color="#7c3aed" />
+                    <Cpu size={14} color="var(--graft)" />
                   </div>
-                  <div className="stat-value" style={{ fontSize: 16, color: '#7c3aed' }}>{mcpTools ? `${mcpTools.length} tools` : 'Offline'}</div>
+                  <div className="stat-value" style={{ fontSize: 16, color: 'var(--graft)' }}>{mcpTools ? `${mcpTools.length} tools` : 'Offline'}</div>
                   <div className="stat-meta">{mcpTools ? 'served by the Gateway at /mcp' : 'Gateway MCP endpoint unreachable'}</div>
                 </div>
               </div>
@@ -357,7 +407,7 @@ export default function App() {
                 <div className="card" style={{ padding: 22 }}>
                   <div className="section-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Scan size={16} color="#da1a60" />
+                      <Scan size={16} color="var(--accent)" />
                       <span className="section-title">Run Topic Scanner</span>
                     </div>
                     <span className="badge badge-pink">MCP Tool</span>
@@ -381,7 +431,7 @@ export default function App() {
                 <div className="card" style={{ padding: 22 }}>
                   <div className="section-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <LightbulbIcon size={16} color="#d97706" />
+                      <LightbulbIcon size={16} color="var(--accent)" />
                       <span className="section-title">Suggest Next Article</span>
                     </div>
                     <span className="badge badge-pink">MCP Tool</span>
@@ -433,7 +483,7 @@ export default function App() {
                 <div className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column' }}>
                   <div className="section-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Terminal size={15} color="#da1a60" />
+                      <Terminal size={15} color="var(--graft)" />
                       <span className="section-title">Live RPC Calls</span>
                     </div>
                     <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>Hypertube</span>
@@ -444,12 +494,12 @@ export default function App() {
                     ) : rpcLogs.map(log => (
                       <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #1a1a1a', paddingBottom: 5 }}>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <span style={{ color: log.status === 'ok' ? '#22c55e' : '#ef4444' }}>➔</span>
+                          <span style={{ color: log.status === 'ok' ? '#fff' : '#ef4444' }}>➔</span>
                           <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{log.method}</span>
                         </div>
                         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                           <span style={{ color: '#555', fontSize: 10 }}>{log.time}</span>
-                          <span style={{ background: '#1a1a1a', color: '#60a5fa', padding: '1px 6px', borderRadius: 4, fontSize: 10 }}>{log.durationMs}ms</span>
+                          <span style={{ background: '#1a1a1a', color: 'var(--accent)', padding: '1px 6px', borderRadius: 4, fontSize: 10 }}>{log.durationMs}ms</span>
                         </div>
                       </div>
                     ))}
@@ -482,7 +532,7 @@ export default function App() {
 
                 {suggestion && (
                   <div className="card" style={{ padding: 14, marginTop: 14, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <LightbulbIcon size={15} color="#d97706" style={{ marginTop: 2 }} />
+                    <LightbulbIcon size={15} color="var(--accent)" style={{ marginTop: 2 }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>AI Suggestion: {suggestion.topic}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{suggestion.rationale}</div>
@@ -556,9 +606,9 @@ export default function App() {
               </div>
 
               {isGenerating && (
-                <div className="card" style={{ padding: 20, marginBottom: 18, borderColor: 'var(--accent-border)', background: 'rgba(218,26,96,0.03)' }}>
+                <div className="card" style={{ padding: 20, marginBottom: 18, borderColor: 'var(--accent-border)', background: 'rgba(255,106,19,0.04)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                    <Sparkles size={17} color="#da1a60" className="pulse-indicator" />
+                    <Sparkles size={17} color="var(--accent)" className="pulse-indicator" />
                     <span style={{ fontWeight: 700, fontSize: 15 }}>Generating: "{genTopic}"</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
@@ -573,7 +623,7 @@ export default function App() {
                         style={{
                           padding: 12,
                           borderRadius: 8,
-                          background: genStep >= s.step ? 'rgba(218,26,96,0.07)' : 'var(--bg-surface)',
+                          background: genStep >= s.step ? 'rgba(255,106,19,0.08)' : 'var(--bg-surface)',
                           border: `1px solid ${genStep === s.step ? 'var(--accent)' : genStep > s.step ? 'var(--accent-border)' : 'var(--border)'}`,
                           transition: 'all 0.3s',
                         }}
@@ -666,7 +716,7 @@ export default function App() {
 
               {!auditResult ? (
                 <div className="card" style={{ padding: 40, textAlign: 'center' }}>
-                  <ShieldCheck size={40} color="#da1a60" style={{ margin: '0 auto 14px' }} />
+                  <ShieldCheck size={40} color="var(--accent)" style={{ margin: '0 auto 14px' }} />
                   <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>No audit run yet</div>
                   <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Go to Draft Studio, select a draft, and click "Style Check"</div>
                   <button className="btn-secondary" onClick={() => setTab('writer')}>Go to Draft Studio</button>
@@ -677,7 +727,7 @@ export default function App() {
                     <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 12 }}>Brand Score</div>
                     <div style={{
                       width: 100, height: 100, borderRadius: '50%',
-                      background: auditResult.brand_score >= 85 ? 'rgba(22,163,74,0.1)' : 'rgba(218,26,96,0.1)',
+                      background: auditResult.brand_score >= 85 ? 'rgba(0,0,0,0.06)' : 'rgba(255,106,19,0.12)',
                       border: `4px solid ${auditResult.brand_score >= 85 ? 'var(--green)' : 'var(--accent)'}`,
                       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                       margin: '0 auto 14px',
@@ -738,7 +788,7 @@ export default function App() {
 
               {!prResult ? (
                 <div className="card" style={{ padding: 40, textAlign: 'center' }}>
-                  <GitPullRequest size={40} color="#da1a60" style={{ margin: '0 auto 14px' }} />
+                  <GitPullRequest size={40} color="var(--accent)" style={{ margin: '0 auto 14px' }} />
                   <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>No PR staged yet</div>
                   <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Select a draft in the Draft Studio and click "Stage PR"</div>
                   <button className="btn-secondary" onClick={() => setTab('writer')}>Go to Draft Studio</button>
@@ -752,7 +802,7 @@ export default function App() {
                 <div className="card" style={{ padding: 28, maxWidth: 640 }}>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 20 }}>
                     <div style={{ padding: 10, background: 'var(--accent-light)', borderRadius: 10 }}>
-                      <GitPullRequest size={22} color="#da1a60" />
+                      <GitPullRequest size={22} color="var(--accent)" />
                     </div>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 16 }}>{prResult.pr_title}</div>
@@ -784,6 +834,13 @@ export default function App() {
           {tab === 'architecture' && <Architecture statusLabel={status?.status} />}
 
         </div>
+        <GraftStrip />
+      </div>
+
+      <div className="toasts" aria-live="polite">
+        {toasts.map(t => (
+          <div key={t.id} className={`toast ${t.kind}`}>{t.text}<button onClick={() => dismiss(t.id)} aria-label="Dismiss"><X size={14} /></button></div>
+        ))}
       </div>
 
       {/* ── Sources Modal ── */}
