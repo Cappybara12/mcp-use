@@ -6,10 +6,11 @@ ever isn't present.
 """
 
 import yaml
+import os
 from pathlib import Path
 from functools import lru_cache
 
-CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
+CONFIG_PATH = Path(os.environ.get("PIPELINE_CONFIG", Path(__file__).parent.parent / "config.yaml"))
 
 _DEFAULTS = {
     "brand": {
@@ -22,6 +23,19 @@ _DEFAULTS = {
         "offering_plural": "villas, beach houses, and homestays",
     },
     "site_repo_path": "/Users/akshay/.gemini/antigravity-ide/scratch/wayzyy-site",
+    "editorial": {
+        "minimum_words": 900,
+        "maximum_primary_keyword_uses": 8,
+        "required_sections": ["FAQ"],
+        "require_sources": True,
+        "require_image_attribution": True,
+        "require_human_review": True,
+    },
+    "editorial_rules": {
+        "tone": "Helpful, specific, practical, and honest; avoid generic praise.",
+        "required_elements": ["concrete examples", "source links", "original recommendations"],
+        "banned_phrases": ["in today's fast-paced world", "unlock the power of"],
+    },
 }
 
 
@@ -38,4 +52,24 @@ def load_config() -> dict:
     merged = dict(_DEFAULTS)
     merged["brand"] = {**_DEFAULTS["brand"], **user_config.get("brand", {})}
     merged["site_repo_path"] = user_config.get("site_repo_path", _DEFAULTS["site_repo_path"])
+    merged["editorial"] = {**_DEFAULTS["editorial"], **user_config.get("editorial", {})}
+    merged["editorial_rules"] = {**_DEFAULTS["editorial_rules"], **user_config.get("editorial_rules", {})}
     return merged
+
+
+def editorial_contract() -> str:
+    """Return project-specific rules injected into the writing prompts."""
+    cfg = load_config()
+    rules = cfg["editorial_rules"]
+    gates = cfg["editorial"]
+    return (
+        f"BRAND: {cfg['brand']['name']} — {cfg['brand'].get('niche') or cfg['brand'].get('description', '')}\n"
+        f"TONE: {rules['tone']}\n"
+        f"REQUIRED ELEMENTS: {', '.join(rules['required_elements'])}\n"
+        f"BANNED PHRASES: {', '.join(rules['banned_phrases'])}\n"
+        f"MINIMUM LENGTH: {gates['minimum_words']} words\n"
+        f"REQUIRED SECTIONS: {', '.join(gates['required_sections'])}\n"
+        f"PRIMARY KEYWORD LIMIT: {gates['maximum_primary_keyword_uses']} uses\n"
+        "Do not invent facts. Use the research brief and cite useful sources. "
+        "The output must be reviewed by a human before publication."
+    )

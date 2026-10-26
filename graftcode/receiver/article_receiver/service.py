@@ -1,4 +1,5 @@
 import glob as _glob
+import importlib
 import os
 import sys
 import re
@@ -9,6 +10,12 @@ import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from datetime import datetime
+
+# Pipeline Studio lives in a sibling package. The Graftcode gateway runs this module from a temp
+# copy, so scripts/run_gateway.sh passes the real folder in WAYZYY_RECEIVER_DIR.
+_RECEIVER_DIR = os.environ.get("WAYZYY_RECEIVER_DIR") or str(Path(__file__).resolve().parent.parent)
+if _RECEIVER_DIR not in sys.path:
+    sys.path.insert(0, _RECEIVER_DIR)
 
 try:
     import yaml
@@ -24,6 +31,10 @@ _DEFAULT_CONFIG = {
         "name": "Wayzyy",
         "description": "Goa vacation rental & travel marketplace",
         "topic_keyword": "Goa",
+        # Read by the article pipeline (agent/config.py) when it shares this file.
+        "niche": "Goa travel",
+        "offering": "villa or vacation rental",
+        "offering_plural": "villas, beach houses, and homestays",
         "fallback_research_prompt": "Topic: {topic}. Write a comprehensive guide for {brand}'s audience based on your knowledge.",
     },
     "categories": {
@@ -51,6 +62,14 @@ _DEFAULT_CONFIG = {
         "attribution_keyword": "pexels",
         "publish_threshold": 85,
     },
+    "editorial": {
+        "minimum_words": 900,
+        "maximum_primary_keyword_uses": 8,
+        "required_sections": ["FAQ"],
+        "require_sources": True,
+        "require_image_attribution": True,
+        "require_human_review": True,
+    },
 }
 
 
@@ -74,7 +93,7 @@ def _load_config(path) -> dict:
         user = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         if not isinstance(user, dict):
             raise ValueError(f"Config error: {path} must contain a mapping at the top level.")
-        for section in ("brand", "categories", "suggestion", "style"):
+        for section in ("brand", "categories", "suggestion", "style", "editorial"):
             if section in user:
                 if not isinstance(user[section], dict):
                     raise ValueError(f"Config error: '{section}' must be a mapping.")
@@ -91,6 +110,15 @@ def _load_config(path) -> dict:
         _str_list(tier, f"suggestion.tiers[{i}]")
     _str_list(config["style"]["banned_words"], "style.banned_words")
     _str_list(config["style"]["banned_openers"], "style.banned_openers")
+    editorial = config["editorial"]
+    if not isinstance(editorial.get("minimum_words"), int) or editorial["minimum_words"] < 0:
+        raise ValueError("Config error: editorial.minimum_words must be a non-negative integer.")
+    if not isinstance(editorial.get("maximum_primary_keyword_uses"), int) or editorial["maximum_primary_keyword_uses"] < 0:
+        raise ValueError("Config error: editorial.maximum_primary_keyword_uses must be a non-negative integer.")
+    _str_list(editorial["required_sections"], "editorial.required_sections")
+    for key in ("require_sources", "require_image_attribution", "require_human_review"):
+        if not isinstance(editorial[key], bool):
+            raise ValueError(f"Config error: editorial.{key} must be true or false.")
     return config
 
 
@@ -244,6 +272,12 @@ class PullRequestResult:
     pr_url: str
     files_modified: list[str]
     message: str
+
+
+def _studio():
+    from article_receiver.studio import api
+
+    return api
 
 
 def _to_json(result) -> str:
@@ -583,7 +617,8 @@ class ArticlePipelineService:
         """
         file_path = _find_draft(filename)
 
-        text = file_path.read_text(encoding="utf-8", errors="ignore").lower()
+        raw_text = file_path.read_text(encoding="utf-8", errors="ignore")
+        text = raw_text.lower()
 
         style = CONFIG["style"]
         found_cliches = [w for w in style["banned_words"] if re.search(rf"\b{re.escape(w.lower())}\b", text)]
@@ -603,11 +638,44 @@ class ArticlePipelineService:
         attribution = style["attribution_keyword"]
         if attribution and attribution.lower() in text:
             passed_checks.append(f"Includes {attribution.title()} attribution")
+        elif not CONFIG["editorial"]["require_image_attribution"]:
+            passed_checks.append("Image attribution check disabled")
         if not found_cliches:
             passed_checks.append("No banned AI clichés")
 
+        editorial = CONFIG["editorial"]
+        word_count = len(raw_text.split())
+        if word_count >= editorial["minimum_words"]:
+            passed_checks.append(f"Meets minimum length ({editorial['minimum_words']} words)")
+        if editorial["require_sources"] and re.search(r"https?://", raw_text):
+            passed_checks.append("Includes source links")
+        elif not editorial["require_sources"]:
+            passed_checks.append("Source-link check disabled")
+        for required in editorial["required_sections"]:
+            if required.lower() in text:
+                passed_checks.append(f"Includes required section: {required}")
+
+        # The article's primary keyword is only known if the draft's front matter records it.
+        # (The brand/destination keyword is deliberately not used: "Goa" would exceed any limit.)
+        front = re.match(r"^---\n(.*?)\n---", raw_text, re.DOTALL)
+        keyword_match = re.search(r"^(?:primary_)?keyword:\s*(.+)$", front.group(1), re.MULTILINE) if front else None
+        keyword = keyword_match.group(1).strip().strip("\"'").lower() if keyword_match else ""
+        keyword_uses = len(re.findall(rf"\b{re.escape(keyword)}\b", text)) if keyword else 0
+        if keyword and keyword_uses <= editorial["maximum_primary_keyword_uses"]:
+            passed_checks.append(f"Primary keyword '{keyword}' is within the limit ({keyword_uses} uses)")
+
         # Score calculation
         deductions = len(found_cliches) * 4 + min(passive_matches, 5) * 2
+        if word_count < editorial["minimum_words"]:
+            deductions += 10
+        if editorial["require_sources"] and not re.search(r"https?://", raw_text):
+            deductions += 10
+        if editorial["require_image_attribution"] and attribution and attribution.lower() not in text:
+            deductions += 10
+        missing_sections = [s for s in editorial["required_sections"] if s.lower() not in text]
+        deductions += len(missing_sections) * 5
+        if keyword and keyword_uses > editorial["maximum_primary_keyword_uses"]:
+            deductions += 5
         score = max(60, 100 - deductions)
 
         return _to_json(StyleAudit(
@@ -617,7 +685,15 @@ class ArticlePipelineService:
             ai_cliches_found=found_cliches,
             passive_instances=passive_matches,
             passed_checks=passed_checks,
-            recommendations=[f"Replace cliché '{w}' with a specific detail." for w in found_cliches[:3]],
+            recommendations=(
+                [f"Replace cliché '{w}' with a specific detail." for w in found_cliches[:3]]
+                + ([f"Add at least {editorial['minimum_words']} words (currently {word_count})."] if word_count < editorial["minimum_words"] else [])
+                + (["Add source links for factual claims."] if editorial["require_sources"] and not re.search(r"https?://", raw_text) else [])
+                + ([f"Add an image credit that mentions '{attribution}'."] if editorial["require_image_attribution"] and attribution and attribution.lower() not in text else [])
+                + ([f"Add required section: {s}." for s in missing_sections])
+                + ([f"Reduce uses of '{keyword}' (found {keyword_uses}, limit {editorial['maximum_primary_keyword_uses']})."] if keyword and keyword_uses > editorial["maximum_primary_keyword_uses"] else [])
+                + ([f"Rewrite passive phrases (found {passive_matches})."] if passive_matches else [])
+            ),
         ))
 
     def run_scanner(self) -> str:
@@ -706,7 +782,15 @@ class ArticlePipelineService:
             raise RuntimeError("push_to_github needs the real article-writer pipeline (set WAYZYY_WRITER_DIR).")
         if str(WAYZYY_WRITER_DIR) not in sys.path:
             sys.path.insert(0, str(WAYZYY_WRITER_DIR))
-        from agent.site_publisher import publish_draft
+        publisher_module = os.environ.get("PUBLISHER_MODULE", "agent.site_publisher")
+        publisher_function = os.environ.get("PUBLISHER_FUNCTION", "publish_draft")
+        try:
+            publish_draft = getattr(importlib.import_module(publisher_module), publisher_function)
+        except (ImportError, AttributeError) as exc:
+            raise RuntimeError(
+                f"Could not load publisher {publisher_module}.{publisher_function}. "
+                "Set PUBLISHER_MODULE/PUBLISHER_FUNCTION to an adapter for your site."
+            ) from exc
 
         token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
         if not token:
@@ -768,3 +852,172 @@ class ArticlePipelineService:
             files_modified=[str(p) for p in (result.get("tsx_path"), result.get("hero_image_path")) if p],
             message="Real GitHub pull request created. Nothing was merged into main.",
         ))
+
+
+    # ── Pipeline Studio ─────────────────────────────────────────────────────────
+    # Thin wrappers over article_receiver.studio.api. Arguments are plain strings/booleans and every
+    # method returns JSON text. Secrets are write-only: no method ever returns an API key.
+
+    def studio_write_article(self, ws: str, topic: str, keyword: str) -> str:
+        """Write an article for a topic in one call. Runs the workspace's pipeline up to human review and returns the draft, its SEO report and what to fix. Use studio_list_workspaces first to get ws."""
+        return json.dumps(_studio().write_article(ws, topic, keyword))
+
+    def studio_decide(self, ws: str, run_id: str, decision: str, notes: str, publish: bool) -> str:
+        """Approve or reject a draft that studio_write_article returned. Call this only after the user has explicitly decided. decision is 'approve' or 'reject'. Set publish to true only if the user asked to publish; otherwise nothing is published."""
+        return json.dumps(_studio().decide(ws, run_id, decision, notes, publish))
+
+    def studio_catalog(self) -> str:
+        """Node types, AI providers and plan statuses used by the Pipeline Studio."""
+        return json.dumps(_studio().catalog())
+
+    def studio_list_workspaces(self) -> str:
+        """List workspaces (one per blog or organization)."""
+        return json.dumps(_studio().list_workspaces())
+
+    def studio_create_workspace(self, name: str, site_url: str, niche: str, template: str) -> str:
+        """Create a workspace. template is 'demo' (offline samples) or 'live' (a real blog)."""
+        return json.dumps(_studio().create_workspace(name, site_url, niche, template))
+
+    def studio_get_workspace(self, ws: str) -> str:
+        """Workspace settings, saved key names (masked), pipelines and counts."""
+        return json.dumps(_studio().workspace(ws))
+
+    def studio_delete_workspace(self, ws: str) -> str:
+        """Delete a workspace and everything in it, including its saved keys."""
+        return json.dumps(_studio().delete_workspace(ws))
+
+    def studio_save_config(self, ws: str, patch_json: str) -> str:
+        """Update workspace settings (brand, voice prompt, categories, GitHub target, schedule)."""
+        return json.dumps(_studio().save_config(ws, patch_json))
+
+    def studio_list_templates(self, ws: str) -> str:
+        """List reusable workspace templates for rulebooks, prompts, RSS, keywords, SEO, Reddit and pipelines."""
+        return json.dumps(_studio().list_templates(ws))
+
+    def studio_save_template(self, ws: str, template_json: str) -> str:
+        """Save or replace a reusable template. It never contains API keys unless the caller puts secrets in the payload."""
+        return json.dumps(_studio().save_template(ws, template_json))
+
+    def studio_delete_template(self, ws: str, template_id: str) -> str:
+        """Delete a reusable workspace template."""
+        return json.dumps(_studio().delete_template(ws, template_id))
+
+    def studio_set_secret(self, ws: str, slot: str, provider: str, key: str) -> str:
+        """Save an API key under a name for this workspace. Keys are never returned."""
+        return json.dumps(_studio().set_secret(ws, slot, provider, key))
+
+    def studio_test_key(self, ws: str, provider: str, slot: str) -> str:
+        """Check that a saved API key works, with one tiny request. Returns ok true/false and a message. Never returns the key."""
+        return json.dumps(_studio().test_key(ws, provider, slot))
+
+    def studio_delete_secret(self, ws: str, slot: str) -> str:
+        """Delete a saved API key."""
+        return json.dumps(_studio().delete_secret(ws, slot))
+
+    def studio_get_pipeline(self, ws: str, pipeline_id: str) -> str:
+        """A pipeline: its nodes, settings and connections."""
+        return json.dumps(_studio().get_pipeline(ws, pipeline_id))
+
+    def studio_save_pipeline(self, ws: str, pipeline_json: str) -> str:
+        """Save a pipeline after validating node types and connections."""
+        return json.dumps(_studio().save_pipeline(ws, pipeline_json))
+
+    def studio_new_pipeline(self, ws: str, name: str, live: bool) -> str:
+        """Create a new pipeline from the starter flow."""
+        return json.dumps(_studio().new_pipeline(ws, name, live))
+
+    def studio_delete_pipeline(self, ws: str, pipeline_id: str) -> str:
+        """Delete a pipeline (a workspace keeps at least one)."""
+        return json.dumps(_studio().delete_pipeline(ws, pipeline_id))
+
+    def studio_preview_prompt(self, ws: str, pipeline_id: str, node_id: str, run_id: str) -> str:
+        """The exact prompt an AI step would send, without calling the AI."""
+        return json.dumps(_studio().preview_prompt(ws, pipeline_id, node_id, run_id))
+
+    def studio_list_ideas(self, ws: str) -> str:
+        """Content ideas found by source steps (RSS, keywords) or added by hand."""
+        return json.dumps(_studio().list_ideas(ws))
+
+    def studio_add_idea(self, ws: str, title: str, keyword: str, category: str) -> str:
+        """Add a content idea."""
+        return json.dumps(_studio().add_idea(ws, title, keyword, category))
+
+    def studio_delete_idea(self, ws: str, idea_id: str) -> str:
+        """Remove a content idea."""
+        return json.dumps(_studio().delete_idea(ws, idea_id))
+
+    def studio_list_plan(self, ws: str) -> str:
+        """The content plan: items with a category, keyword, date and status."""
+        return json.dumps(_studio().list_plan(ws))
+
+    def studio_save_plan_item(self, ws: str, item_json: str) -> str:
+        """Create or update a plan item (title, category, keyword, scheduled_for, status)."""
+        return json.dumps(_studio().save_plan_item(ws, item_json))
+
+    def studio_delete_plan_item(self, ws: str, item_id: str) -> str:
+        """Remove a plan item."""
+        return json.dumps(_studio().delete_plan_item(ws, item_id))
+
+    def studio_get_rulebook(self, ws: str) -> str:
+        """The writing rulebook: learned and custom rules with their evidence."""
+        return json.dumps(_studio().get_rulebook(ws))
+
+    def studio_save_rulebook(self, ws: str, rulebook_json: str) -> str:
+        """Save an edited rulebook (enable, disable, edit or remove rules)."""
+        return json.dumps(_studio().save_rulebook(ws, rulebook_json))
+
+    def studio_add_custom_rule(self, ws: str, text: str, kind: str, phrases: str) -> str:
+        """Add your own rule. kind is 'note' or 'banned_phrases' (phrases is comma separated)."""
+        return json.dumps(_studio().add_custom_rule(ws, text, kind, phrases))
+
+    def studio_start_run(self, ws: str, pipeline_id: str, item_json: str) -> str:
+        """Start a run of a pipeline, optionally for one plan item."""
+        return json.dumps(_studio().start_run(ws, pipeline_id, item_json))
+
+    def studio_start_run_for_plan_item(self, ws: str, pipeline_id: str, item_id: str) -> str:
+        """Start a run for a plan item (this is the Create draft button)."""
+        return json.dumps(_studio().start_run_for_plan_item(ws, pipeline_id, item_id))
+
+    def studio_run_node(self, ws: str, run_id: str, node_id: str) -> str:
+        """Run one step of a run and return the updated run."""
+        return json.dumps(_studio().run_node(ws, run_id, node_id))
+
+    def studio_run_all(self, ws: str, run_id: str) -> str:
+        """Run every pending step; stops at the human review step or the first error."""
+        return json.dumps(_studio().run_all(ws, run_id))
+
+    def studio_get_run(self, ws: str, run_id: str) -> str:
+        """A run with the status and output of every step."""
+        return json.dumps(_studio().get_run(ws, run_id))
+
+    def studio_list_runs(self, ws: str) -> str:
+        """Recent runs."""
+        return json.dumps(_studio().list_runs(ws))
+
+    def studio_reset_from(self, ws: str, run_id: str, node_id: str) -> str:
+        """Clear a step and everything after it so it can be run again."""
+        return json.dumps(_studio().reset_from(ws, run_id, node_id))
+
+    def studio_review(self, ws: str, run_id: str, node_id: str, decision: str, notes: str, markdown: str) -> str:
+        """Approve or reject a draft at the review step; markdown optionally replaces the draft."""
+        return json.dumps(_studio().review(ws, run_id, node_id, decision, notes, markdown))
+
+    def studio_get_draft(self, ws: str, run_id: str) -> str:
+        """The draft of a run with a fresh SEO report."""
+        return json.dumps(_studio().get_draft(ws, run_id))
+
+    def studio_save_draft(self, ws: str, run_id: str, markdown: str) -> str:
+        """Save edits to a run's draft and return it with a fresh SEO report."""
+        return json.dumps(_studio().save_draft(ws, run_id, markdown))
+
+    def studio_run_due(self, ws: str) -> str:
+        """Create drafts now for every plan item whose date has passed."""
+        return json.dumps(_studio().run_due(ws))
+
+    def studio_export_workflow(self, ws: str, cron: str) -> str:
+        """A GitHub Actions workflow that creates drafts on a schedule and opens a pull request."""
+        return json.dumps(_studio().export_workflow(ws, cron))
+
+    def studio_export_bundle(self, ws: str) -> str:
+        """The workspace files (never API keys) to commit next to the workflow."""
+        return json.dumps(_studio().export_bundle(ws))

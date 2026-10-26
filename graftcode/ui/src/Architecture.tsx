@@ -130,9 +130,9 @@ The Graft is generated from the Python class; MCP is the Gateway's built-in endp
         {bench && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginTop: 16 }}>
             {stat('Graft median', `${fmt(median(bench.graft))} ms`, `p95 ${fmt(p95(bench.graft))} ms · n=${RUNS}`, 'var(--green)')}
-            {stat('MCP median', `${fmt(median(bench.mcp))} ms`, `p95 ${fmt(p95(bench.mcp))} ms · n=${RUNS}`, '#7c3aed')}
+            {stat('MCP median', `${fmt(median(bench.mcp))} ms`, `p95 ${fmt(p95(bench.mcp))} ms · n=${RUNS}`, 'var(--graft)')}
             {stat('Graft = MCP', `${bench.matches}/${RUNS}`, 'responses identical, ignoring the timestamp field', bench.matches === RUNS ? 'var(--green)' : 'var(--red)')}
-            {stat('MCP tools', tools ? String(tools.length) : '…', 'from the gateway, no bridge process', 'var(--accent)')}
+            {stat('MCP tools', tools ? String(tools.length) : '…', 'from the gateway, no bridge process', 'var(--graft)')}
           </div>
         )}
         <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 12 }}>
