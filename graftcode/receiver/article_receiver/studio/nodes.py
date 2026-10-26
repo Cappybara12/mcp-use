@@ -196,6 +196,20 @@ _MODIFIERS = ("how to {k}", "best {k}", "{k} examples", "{k} vs alternatives", "
               "{k} mistakes", "what is {k}", "{k} template", "{k} cost")
 
 
+def _intent(keyword: str) -> str:
+    """A transparent fallback for providers that do not return search intent."""
+    low = keyword.lower()
+    if re.search(r"\b(buy|price|cost|coupon|deal|near me|book|hire|service)\b", low):
+        return "transactional"
+    if re.search(r"\b(best|top|review|vs|alternative|compare|comparison)\b", low):
+        return "commercial"
+    if re.search(r"\b(brand|login|official|website)\b", low):
+        return "navigational"
+    if re.search(r"\b(how|what|why|guide|examples|checklist|tips|mistakes|template)\b", low):
+        return "informational"
+    return ""
+
+
 def _serp_candidates(results: list[dict], seed: str) -> list[dict]:
     """Phrases that recur in what already ranks. No volumes: TinyFish Search does not provide them."""
     seed_words = {w for w in re.findall(r"[a-z0-9]+", seed.lower()) if len(w) > 2}
@@ -207,7 +221,7 @@ def _serp_candidates(results: list[dict], seed: str) -> list[dict]:
                 gram = words[i:i + n]
                 if seed_words & set(gram) and gram[0] not in {"the", "a", "of", "to", "and", "in"} and gram[-1] not in {"the", "a", "of", "to", "and"}:
                     counts[" ".join(gram)] += 1
-    return [{"keyword": k, "volume": None, "difficulty": None, "intent": "", "seen_in": n} for k, n in counts.most_common(40) if n >= 2]
+    return [{"keyword": k, "volume": None, "difficulty": None, "intent": _intent(k), "seen_in": n} for k, n in counts.most_common(40) if n >= 2]
 
 
 def run_keywords(ctx: Ctx, config: dict, up: dict) -> dict:
@@ -216,12 +230,12 @@ def run_keywords(ctx: Ctx, config: dict, up: dict) -> dict:
     limit = max(5, min(int(config.get("limit") or 30), 100))
     country = (config.get("country") or "US").upper()
     if provider == "manual":
-        items = [{"keyword": k.lower(), "volume": None, "difficulty": None, "intent": ""} for k in _lines(config.get("manual", ""), limit)]
+        items = [{"keyword": k.lower(), "volume": None, "difficulty": None, "intent": _intent(k)} for k in _lines(config.get("manual", ""), limit)]
         if not items and seed:
-            items = [{"keyword": seed.lower(), "volume": None, "difficulty": None, "intent": ""}]
+            items = [{"keyword": seed.lower(), "volume": None, "difficulty": None, "intent": _intent(seed)}]
     elif provider == "sample":
         base = re.sub(r"^(how to|how do i|what is|what are|best|why)\s+", "", seed.lower()).strip() or "your topic"
-        items = [{"keyword": m.format(k=base), "volume": None, "difficulty": None, "intent": "informational" if m.startswith(("how", "what")) else ""} for m in _MODIFIERS]
+        items = [{"keyword": m.format(k=base), "volume": None, "difficulty": None, "intent": _intent(m.format(k=base))} for m in _MODIFIERS]
     elif provider == "dataforseo":
         if not seed:
             raise StudioError("Add a seed keyword.")
@@ -231,11 +245,29 @@ def run_keywords(ctx: Ctx, config: dict, up: dict) -> dict:
         if not seed:
             raise StudioError("Add a seed keyword.")
         results = providers.tinyfish_search(ctx.key("tinyfish", config.get("key_slot", "")), seed, country, config.get("language") or "en")
-        items = _serp_candidates(results, seed) or [{"keyword": seed.lower(), "volume": None, "difficulty": None, "intent": ""}]
+        items = _serp_candidates(results, seed) or [{"keyword": seed.lower(), "volume": None, "difficulty": None, "intent": _intent(seed)}]
     else:
         raise StudioError(f"Unknown keyword provider: {provider!r}")
     if not items:
         raise StudioError("No keywords found. Try a broader seed.")
+    for it in items:
+        it["intent"] = it.get("intent") or _intent(str(it.get("keyword", "")))
+    desired_intent = str(config.get("intent") or "all").lower()
+    excluded = {x.lower() for x in _lines(config.get("exclude", ""), 30)}
+    min_volume = max(0, int(config.get("min_volume") or 0))
+    max_difficulty = config.get("max_difficulty")
+    max_difficulty = None if max_difficulty in (None, "") else max(0, min(100, int(max_difficulty)))
+    before_filters = len(items)
+    if desired_intent != "all":
+        items = [it for it in items if it.get("intent") == desired_intent]
+    if min_volume:
+        items = [it for it in items if it.get("volume") is not None and int(it.get("volume") or 0) >= min_volume]
+    if max_difficulty is not None:
+        items = [it for it in items if it.get("difficulty") is None or int(it.get("difficulty")) <= max_difficulty]
+    if excluded:
+        items = [it for it in items if not any(term in str(it.get("keyword", "")).lower() for term in excluded)]
+    if not items:
+        raise StudioError("No keywords matched these filters. Broaden the intent, volume, difficulty, or exclusion settings.")
     for it in items:
         it["score"] = seo.opportunity(it)
     items.sort(key=lambda i: i["score"], reverse=True)
@@ -244,7 +276,9 @@ def run_keywords(ctx: Ctx, config: dict, up: dict) -> dict:
     primary = plan_kw or items[0]["keyword"]
     ctx.add_ideas([{"title": it["keyword"], "keyword": it["keyword"],
                     "note": f"volume {it['volume']}" if it.get("volume") else ""} for it in items[:10]], "keywords")
-    return {"keywords": items, "primary": primary, "provider": provider, "has_volumes": any(i.get("volume") for i in items)}
+    return {"keywords": items, "primary": primary, "provider": provider, "has_volumes": any(i.get("volume") for i in items),
+            "filters": {"intent": desired_intent, "min_volume": min_volume, "max_difficulty": max_difficulty,
+                        "excluded": sorted(excluded), "before": before_filters, "after": len(items)}}
 
 
 def run_seo(ctx: Ctx, config: dict, up: dict) -> dict:
@@ -266,7 +300,9 @@ SYSTEM_WRITE = (
     "You write blog articles in the author's voice. Output Markdown only. Start with YAML front matter containing "
     "title, description (under 155 characters) and primary_keyword, then the article starting with an H1 that matches "
     "the title. Follow the outline and the rulebook exactly. Cite sources by linking them. Never invent facts, statistics "
-    "or quotes: if the research notes do not support a claim, leave it out. End with an FAQ section using '### Question?' headings."
+    "or quotes: if the research notes do not support a claim, leave it out. Use the primary keyword naturally; never "
+    "repeat it in awkward phrases just to increase density. End with an FAQ section using '### Question?' headings. "
+    "Do not include a <script> tag or fenced JSON-LD in the draft; the SEO and publishing steps generate FAQ schema separately."
 )
 SYSTEM_REDDIT = (
     "You help a blog owner share their article on Reddit in a way that is useful to readers and respects each community's "
@@ -380,11 +416,24 @@ def _ai_node(ntype: str):
         if ntype == "outline":
             return {"outline": text}
         if ntype == "write":
+            # Keep structured data out of the reader-facing Markdown. The SEO
+            # step derives it from the FAQ, and the Publish step appends the
+            # executable JSON-LD when the destination supports it.
+            text = _strip_faq_schema(text)
             store.save_draft(ctx.ws, ctx.run["id"], text)
             return {"draft": text, "draft_words": words_in(text)}
         warnings = reddit_warnings(text, config.get("post_type") or "discussion", config.get("disclosure") or "")
         return {"reddit": text, "reddit_warnings": warnings}
     return run
+
+
+def _strip_faq_schema(text: str) -> str:
+    """Remove schema snippets an LLM may have pasted into the article body."""
+    pattern = re.compile(
+        r"\s*(?:```(?:html|xml|javascript)?\s*)?<script\b[^>]*type=[\"']application/ld\+json[\"'][^>]*>.*?</script>\s*(?:```)?",
+        re.IGNORECASE | re.DOTALL,
+    )
+    return pattern.sub("\n", text).rstrip() + "\n"
 
 
 # ── review and publish ────────────────────────────────────────────────────────
@@ -399,13 +448,13 @@ def run_publish(ctx: Ctx, config: dict, up: dict) -> dict:
     review = up.get("review") or {}
     if not review.get("approved"):
         raise StudioError("Approve the draft in the Review step before publishing.")
-    draft = review.get("final_markdown") or up.get("draft") or ""
+    draft = _strip_faq_schema(review.get("final_markdown") or up.get("draft") or "")
     report = up.get("seo") or {}
     slug = report.get("slug") or seo.slugify(up.get("topic", "post"))
     gh = ctx.cfg.get("github", {})
     template = config.get("path_template") or gh.get("path_template") or "content/blog/{slug}.md"
     path = template.replace("{slug}", slug)
-    if config.get("append_faq_schema", True) and report.get("faq_script") and "application/ld+json" not in draft:
+    if config.get("append_faq_schema", True) and report.get("faq_script"):
         draft = draft.rstrip() + "\n\n" + report["faq_script"] + "\n"
     branch = f"graft-studio/{slug[:50]}-{ctx.run['id'][:6]}"
     repo = (config.get("repo") or gh.get("repo") or "").strip()
@@ -444,7 +493,7 @@ NODE_TYPES: dict[str, dict] = {
                        {"key": "max_items", "label": "Max items", "type": "number"}]},
     "scrape": {"label": "Web research", "group": "Sources", "description": "Search the web and read pages (TinyFish), or read URLs you give.",
                "run": run_scrape, "defaults": {"provider": "sample", "mode": "search_and_read", "queries": "{topic}", "max_pages": 3},
-               "fields": [{"key": "provider", "label": "Provider", "type": "select", "options": [["sample", "Sample data (offline)"], ["direct", "Direct fetch (free)"], ["tinyfish", "TinyFish (search + clean pages)"]]},
+               "fields": [{"key": "provider", "label": "Provider", "type": "select", "help": "Sample is offline. Direct fetch is free for simple pages. TinyFish needs a TinyFish key saved in Settings & keys.", "options": [["sample", "Sample data (offline)"], ["direct", "Direct fetch (free)"], ["tinyfish", "TinyFish (search + clean pages)"]]},
                           {"key": "key_slot", "label": "TinyFish key", "type": "key_slot", "keyProvider": "tinyfish"},
                           {"key": "mode", "label": "Mode", "type": "select", "options": [["search_and_read", "Search, then read top results"], ["read_urls", "Read these URLs"]]},
                           {"key": "queries", "label": "Search queries ({topic} is replaced)", "type": "textarea"},
@@ -454,7 +503,7 @@ NODE_TYPES: dict[str, dict] = {
                "run": run_corpus, "defaults": {"provider": "sample", "max_posts": 12, "save": True, "site_url": "sample:blog/acme"},
                "fields": [{"key": "site_url", "label": "Blog address", "type": "text", "help": "Leave empty to use the workspace site. sample:blog/acme uses bundled demo posts."},
                           {"key": "urls", "label": "Or paste post URLs (one per line)", "type": "textarea"},
-                          {"key": "provider", "label": "Reader", "type": "select", "options": [["sample", "Sample data (offline)"], ["direct", "Direct fetch (free)"], ["tinyfish", "TinyFish"]]},
+                          {"key": "provider", "label": "Reader", "type": "select", "help": "Use Direct fetch for simple pages. Choose TinyFish for JavaScript-heavy sites and save its key in Settings & keys.", "options": [["sample", "Sample data (offline)"], ["direct", "Direct fetch (free)"], ["tinyfish", "TinyFish"]]},
                           {"key": "key_slot", "label": "TinyFish key", "type": "key_slot", "keyProvider": "tinyfish"},
                           {"key": "max_posts", "label": "Posts to read", "type": "number"},
                           {"key": "save", "label": "Save the learned rules to the rulebook", "type": "bool"}]},
@@ -464,11 +513,21 @@ NODE_TYPES: dict[str, dict] = {
                              "help": "Added to the workspace voice. Example: 'Write like a friendly senior engineer. No jargon.'"}]},
     "keywords": {"label": "Keyword research", "group": "SEO", "description": "Find what people search for and pick a primary keyword.",
                  "run": run_keywords, "defaults": {"provider": "sample", "seed": "{topic}", "limit": 30, "country": "US", "language": "en"},
-                 "fields": [{"key": "provider", "label": "Provider", "type": "select", "options": [["sample", "Sample data (no real volumes)"], ["manual", "My own list"], ["dataforseo", "DataForSEO (OpenSEO's data source)"], ["tinyfish", "TinyFish Search (what ranks)"]]},
+                 "fields": [{"key": "provider", "label": "Provider", "type": "select", "help": "Manual and sample need no key. DataForSEO provides keyword metrics; TinyFish finds related ranking ideas. Save the selected provider's key in Settings & keys.", "options": [["sample", "Sample data (no real volumes)"], ["manual", "My own list"], ["dataforseo", "DataForSEO (OpenSEO's data source)"], ["tinyfish", "TinyFish Search (what ranks)"]]},
                             {"key": "key_slot", "label": "API key", "type": "key_slot", "keyProviderFrom": "provider"},
                             {"key": "seed", "label": "Seed keyword ({topic} is replaced)", "type": "text"},
                             {"key": "manual", "label": "Your keywords (one per line)", "type": "textarea"},
+                            {"key": "intent", "label": "Search intent", "type": "select",
+                             "help": "Filter by what the searcher is trying to do. Provider intent is preferred; otherwise it is inferred from the phrase.",
+                             "options": [["all", "Any intent"], ["informational", "Informational"], ["commercial", "Commercial investigation"], ["transactional", "Transactional"], ["navigational", "Navigational"]]},
+                            {"key": "min_volume", "label": "Minimum search volume", "type": "number",
+                             "help": "Meaningful for DataForSEO results; providers without volume will not pass this filter."},
+                            {"key": "max_difficulty", "label": "Maximum difficulty (0–100)", "type": "number",
+                             "help": "DataForSEO only. Results with unknown difficulty are kept."},
+                            {"key": "exclude", "label": "Exclude phrases (one per line)", "type": "textarea",
+                             "help": "Remove irrelevant brands, places, or angles from the result list."},
                             {"key": "country", "label": "Country", "type": "text"},
+                            {"key": "language", "label": "Language", "type": "text"},
                             {"key": "limit", "label": "How many", "type": "number"}]},
     "outline": {"label": "Outline", "group": "Write", "description": "Plan the article structure.", "run": _ai_node("outline"),
                 "defaults": {"provider": "", "model": "", "key_slot": "", "prompt": "Plan around the main question a searcher has. Use 5 to 7 H2 sections and end with an FAQ."},
@@ -490,7 +549,7 @@ NODE_TYPES: dict[str, dict] = {
                           *_llm_fields("", "Describe how you like to post. This overrides the default style.")]},
     "publish": {"label": "Publish", "group": "Publish", "description": "Open a GitHub pull request with the approved article. Never merges.",
                 "run": run_publish, "defaults": {"mode": "dry_run", "repo": "", "base_branch": "", "path_template": "", "append_faq_schema": True},
-                "fields": [{"key": "mode", "label": "Mode", "type": "select", "options": [["dry_run", "Dry run (nothing is sent)"], ["github_pr", "Open a GitHub pull request"]]},
+                "fields": [{"key": "mode", "label": "Mode", "type": "select", "help": "Dry run needs no GitHub token. Opening a real pull request requires a token saved in Settings & keys.", "options": [["dry_run", "Dry run (nothing is sent)"], ["github_pr", "Open a GitHub pull request"]]},
                            {"key": "repo", "label": "Repository (owner/name)", "type": "text", "help": "Leave empty to use the workspace setting."},
                            {"key": "base_branch", "label": "Base branch", "type": "text"},
                            {"key": "path_template", "label": "File path ({slug} is replaced)", "type": "text"},

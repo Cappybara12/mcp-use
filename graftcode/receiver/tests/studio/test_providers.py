@@ -169,3 +169,48 @@ def test_github_rejects_bad_targets_before_any_request(base, repo, base_branch, 
     with pytest.raises(StudioError):
         providers.github_open_pr("t", repo, base_branch, branch, path, "x", "t", "b")
     assert base.requests == []
+
+
+# ── testing a saved key ───────────────────────────────────────────────────────
+
+@pytest.fixture()
+def key_ws(api, ws):
+    api.set_secret(ws, "main", "openai", "sk-live-style-0123456789")
+    api.set_secret(ws, "tf", "tinyfish", "tf-0123456789")
+    api.set_secret(ws, "gh", "github", "ghp_0123456789")
+    api.set_secret(ws, "dfs", "dataforseo", "login:password12")
+    return ws
+
+
+def test_a_working_key_reports_success(api, key_ws, base):
+    base.on("POST", "/v1/chat/completions", {"choices": [{"message": {"content": "OK"}}]})
+    out = api.test_key(key_ws, "openai", "main")
+    assert out["ok"] is True and "Connected to OpenAI" in out["message"] and "sk-live" not in out["message"]
+    assert base.requests[-1]["headers"]["authorization"] == "Bearer sk-live-style-0123456789"
+    assert "Reply with the single word OK" in base.requests[-1]["body"].decode()
+
+
+def test_a_rejected_key_reports_failure_without_leaking_it(api, key_ws, base):
+    base.on("POST", "/v1/chat/completions", {"error": {"message": "Incorrect API key provided: sk-live-style-0123456789"}}, status=401)
+    out = api.test_key(key_ws, "openai", "main")
+    assert out["ok"] is False and "rejected" in out["message"] and "0123456789" not in out["message"]
+
+
+def test_other_providers_can_be_tested(api, key_ws, base):
+    base.on("GET", "/", {"results": []})
+    assert api.test_key(key_ws, "tinyfish", "tf") == {"ok": True, "message": "Connected to TinyFish."}
+    base.routes.clear()
+    base.on("GET", "/user", {"login": "octocat"})
+    assert "octocat" in api.test_key(key_ws, "github", "gh")["message"]
+
+
+def test_dataforseo_is_not_tested_because_it_costs_money(api, key_ws, base):
+    out = api.test_key(key_ws, "dataforseo", "dfs")
+    assert out["ok"] is None and "charges" in out["message"] and base.requests == []
+
+
+def test_testing_without_a_key_or_with_an_unknown_provider(api, ws):
+    assert api.test_key(ws, "openai", "")["ok"] is False and "No API key" in api.test_key(ws, "openai", "")["message"]
+    assert api.test_key(ws, "openai", "nope")["ok"] is False
+    with pytest.raises(StudioError, match="Unknown provider"):
+        api.test_key(ws, "bogus", "")

@@ -93,7 +93,7 @@ def analyze_post(doc: dict, url: str = "") -> dict:
         "h2": h2, "h3": h3, "question_headings": question_heads,
         "avg_sentence_words": round(sum(words_in(s) for s in sents) / max(1, len(sents)), 1),
         "avg_paragraph_words": round(sum(words_in(p) for p in paragraphs) / max(1, len(paragraphs)), 1),
-        "lists": doc["lists"], "bold": doc["bold"], "images": doc["images"],
+        "lists": doc["lists"], "bold": doc["bold"], "images": doc["images"], "tables": doc.get("tables", 0),
         "external_links": doc["external_links"], "internal_links": doc["internal_links"],
         "faq_pairs": len(doc["faq_pairs"]), "faq_heading": doc["has_faq_heading"], "faq_schema": doc["has_faq_schema"],
         "cta": bool(_CTA.search(last)), "reading_ease": flesch(text),
@@ -229,6 +229,12 @@ def learn(posts: list[dict], texts: list[str] | None = None) -> dict:
     if stats["median_external_links"] >= 1:
         add("links", "links", f"Cite sources: about {stats['median_external_links']} external link{'s' if stats['median_external_links'] != 1 else ''} per post.",
             f"Median {stats['median_external_links']} external links.", {"min_external": max(1, stats["median_external_links"] - 1)})
+
+    tab_n, tab_p = _share(posts, lambda p: p.get("tables", 0) >= 1)
+    if tab_p >= 0.3:
+        each = statistics.median([p["tables"] for p in posts if p.get("tables", 0) >= 1])
+        add("tables", "note", "Add a comparison table when you compare 3 or more options across several attributes; otherwise write prose "
+            f"(about {int(each)} per post when one is used).", f"{tab_n} of {n} posts ({_pct(tab_p)}) include a table.", {})
 
     cta_n, cta_p = _share(posts, lambda p: p["cta"])
     if cta_p >= 0.5:

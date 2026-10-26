@@ -44,6 +44,18 @@ def test_source_steps_feed_the_idea_list(api, ws):
     assert {"rss", "keywords"} <= sources
 
 
+def test_keyword_research_filters_by_intent_and_exclusions(api, ws):
+    pipe = api.get_pipeline(ws, "blog-engine")
+    node = next(n for n in pipe["nodes"] if n["id"] == "keywords")
+    node["config"].update({"provider": "manual", "manual": "how to choose a bnb\nbnb price\nbnb reviews\nexample brand", "intent": "informational", "exclude": "brand"})
+    api.save_pipeline(ws, json.dumps(pipe))
+    run = api.run_node(ws, start(api, ws)["id"], "topic")
+    run = api.run_node(ws, run["id"], "keywords")
+    output = run["nodes"]["keywords"]["output"]
+    assert [item["keyword"] for item in output["keywords"]] == ["how to choose a bnb"]
+    assert output["filters"] == {"intent": "informational", "min_volume": 0, "max_difficulty": None, "excluded": ["brand"], "before": 4, "after": 1}
+
+
 def test_steps_must_run_in_order(api, ws):
     run = start(api, ws)
     run = api.run_node(ws, run["id"], "write")

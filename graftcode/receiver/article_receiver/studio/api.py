@@ -43,6 +43,7 @@ def create_workspace(name: str, site_url: str, niche: str, template: str) -> dic
 def workspace(ws: str) -> dict:
     cfg = store.get_config(ws)
     return {"id": ws, "config": cfg, "secrets": store.list_secrets(ws), "pipelines": store.list_pipelines(ws),
+            "templates": store.list_templates(ws),
             "rule_count": len(store.get_rulebook(ws).get("rules", [])), "plan_count": len(store.list_plan(ws))}
 
 
@@ -55,6 +56,20 @@ def save_config(ws: str, patch_json: str) -> dict:
     return store.save_config(ws, _loads(patch_json, "Settings"))
 
 
+# ── reusable templates ──────────────────────────────────────────────────────
+
+def list_templates(ws: str) -> list:
+    return store.list_templates(ws)
+
+
+def save_template(ws: str, template_json: str) -> dict:
+    return store.save_template(ws, _loads(template_json, "Template"))
+
+
+def delete_template(ws: str, template_id: str) -> list:
+    return store.delete_template(ws, template_id)
+
+
 # ── keys ──────────────────────────────────────────────────────────────────────
 
 def set_secret(ws: str, slot: str, provider: str, key: str) -> list:
@@ -65,6 +80,25 @@ def set_secret(ws: str, slot: str, provider: str, key: str) -> list:
 def delete_secret(ws: str, slot: str) -> list:
     store.delete_secret(ws, slot)
     return store.list_secrets(ws)
+
+
+def test_key(ws: str, provider: str, slot: str) -> dict:
+    """Check that a saved key works with one tiny request. Returns {ok, message}; ok is None when a test would cost money."""
+    if provider not in providers.KEY_PROVIDERS:
+        raise StudioError(f"Unknown provider: {provider!r}")
+    try:
+        key = store.resolve_key(ws, provider, slot)
+        if provider in providers.LLM_PROVIDERS:
+            reply = providers.chat(provider, key, "", "You are a connection test.", "Reply with the single word OK.", "text", 16)
+            return {"ok": True, "message": f"Connected to {providers.LLM_PROVIDERS[provider]['label']}. It replied: {reply[:40]}"}
+        if provider == "tinyfish":
+            providers.tinyfish_search(key, "connection test")
+            return {"ok": True, "message": "Connected to TinyFish."}
+        if provider == "github":
+            return {"ok": True, "message": f"Connected to GitHub as {providers.github_whoami(key)}."}
+        return {"ok": None, "message": "Not tested: DataForSEO charges for every request. It will be checked the first time a keyword step runs."}
+    except StudioError as exc:                      # includes network and key errors; messages never contain the key
+        return {"ok": False, "message": str(exc)}
 
 
 # ── pipelines ─────────────────────────────────────────────────────────────────

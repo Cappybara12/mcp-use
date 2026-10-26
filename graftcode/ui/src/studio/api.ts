@@ -1,6 +1,6 @@
 import { callGraft } from '../graft'
 import type {
-  Catalog, Idea, PlanItem, Pipeline, PromptPreview, Rulebook, Run, SecretInfo, SeoReport, WorkspaceDetail, WorkspaceSummary,
+  Catalog, Idea, PlanItem, Pipeline, PromptPreview, Rulebook, Run, SecretInfo, SeoReport, Template, WorkspaceDetail, WorkspaceSummary,
 } from './types'
 
 // Every call goes through the generated Graft to the Python receiver. Python methods are snake_case;
@@ -18,7 +18,12 @@ export const studio = {
   workspace: (ws: string) => call<WorkspaceDetail>('studioGetWorkspace', ws),
   deleteWorkspace: (ws: string) => call<{ deleted: string }>('studioDeleteWorkspace', ws),
   saveConfig: (ws: string, patch: Record<string, unknown>) => call('studioSaveConfig', ws, JSON.stringify(patch)),
+  templates: (ws: string) => call<Template[]>('studioListTemplates', ws),
+  saveTemplate: (ws: string, template: Partial<Template> & Pick<Template, 'name' | 'kind' | 'payload'>) => call<Template>('studioSaveTemplate', ws, JSON.stringify(template)),
+  deleteTemplate: (ws: string, id: string) => call<Template[]>('studioDeleteTemplate', ws, id),
   setSecret: (ws: string, slot: string, provider: string, key: string) => call<SecretInfo[]>('studioSetSecret', ws, slot, provider, key),
+  testKey: (ws: string, provider: string, slot: string) =>
+    call<{ ok: boolean | null; message: string }>('studioTestKey', ws, provider, slot),
   deleteSecret: (ws: string, slot: string) => call<SecretInfo[]>('studioDeleteSecret', ws, slot),
 
   pipeline: (ws: string, id: string) => call<Pipeline>('studioGetPipeline', ws, id),

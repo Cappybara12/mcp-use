@@ -890,9 +890,25 @@ class ArticlePipelineService:
         """Update workspace settings (brand, voice prompt, categories, GitHub target, schedule)."""
         return json.dumps(_studio().save_config(ws, patch_json))
 
+    def studio_list_templates(self, ws: str) -> str:
+        """List reusable workspace templates for rulebooks, prompts, RSS, keywords, SEO, Reddit and pipelines."""
+        return json.dumps(_studio().list_templates(ws))
+
+    def studio_save_template(self, ws: str, template_json: str) -> str:
+        """Save or replace a reusable template. It never contains API keys unless the caller puts secrets in the payload."""
+        return json.dumps(_studio().save_template(ws, template_json))
+
+    def studio_delete_template(self, ws: str, template_id: str) -> str:
+        """Delete a reusable workspace template."""
+        return json.dumps(_studio().delete_template(ws, template_id))
+
     def studio_set_secret(self, ws: str, slot: str, provider: str, key: str) -> str:
         """Save an API key under a name for this workspace. Keys are never returned."""
         return json.dumps(_studio().set_secret(ws, slot, provider, key))
+
+    def studio_test_key(self, ws: str, provider: str, slot: str) -> str:
+        """Check that a saved API key works, with one tiny request. Returns ok true/false and a message. Never returns the key."""
+        return json.dumps(_studio().test_key(ws, provider, slot))
 
     def studio_delete_secret(self, ws: str, slot: str) -> str:
         """Delete a saved API key."""

@@ -117,6 +117,34 @@ contract: minimum length, keyword frequency, required sections, source links, im
 human review, tone, required elements, and banned phrases. These rules are injected into the
 planner/writer prompts and enforced again by the receiver's style audit.
 
+### Keyword research for real teams
+
+Pipeline Studio is designed for more than a single blog owner. A ghostwriter, agency, or in-house content team can
+use one workspace per client and keep that client's voice in the Rulebook, while reusing the same pipeline shape.
+Keyword research supports four practical modes:
+
+- **Manual**: paste a client's approved terms, one per line, with no external key.
+- **TinyFish**: discover related wording and questions from pages that rank. This is useful for ideation, but it does
+  not supply dependable search volume or difficulty.
+- **DataForSEO**: retrieve volume, difficulty, and intent when prioritisation needs measurable SEO data.
+- **Sample**: try the complete flow offline before connecting a provider.
+
+The Keyword research settings let the user choose country and language, filter by search intent, set minimum volume
+or maximum difficulty, and exclude phrases such as a competitor, location, or irrelevant product. Provider intent is
+used when available; otherwise Studio makes a small, transparent phrase-based inference. The output reports how many
+candidates survived and adds the top ten to Content planner. The user then chooses the primary keyword before the
+outline and writing steps run.
+
+For repeat work, save the configured keyword step or Rulebook as a workspace template. Templates can be exported and
+imported between client workspaces, but they contain no API keys. Keep the keys in Settings & keys. The Rulebook is the
+shared quality contract for every client: voice, length, headings, source requirements, FAQ, calls to action, and banned
+phrases are used in prompts and checked again by SEO. The intended daily flow is:
+
+`brief → keyword shortlist → primary keyword → topic → research → rulebook → outline → draft → SEO → human review → PR`
+
+This makes the project useful as a client-facing ghostwriting tool as well as a Wayzyy-specific content engine: a user
+can change the inputs and editorial rules without rewriting the receiver or the Graft/MCP integration.
+
 The site publisher remains an adapter: `agent/site_publisher.py` currently targets Wayzyy's
 React/TSX blog shape. To publish to another site, keep the receiver and editorial config but
 replace that adapter for the target repository, then set `PUBLISHER_MODULE` and

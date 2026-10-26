@@ -170,6 +170,7 @@ def create_workspace(name: str, site_url: str = "", niche: str = "") -> dict:
     write_json(root / "config.json", cfg)
     write_json(root / "plan.json", [])
     write_json(root / "rulebook.json", {"rules": [], "stats": {}, "sources": [], "updated_at": ""})
+    (root / "templates").mkdir()
     return {"id": ws, **cfg}
 
 
@@ -178,6 +179,56 @@ def delete_workspace(ws: str) -> None:
 
     path = ws_dir(ws)
     shutil.rmtree(path)
+
+
+# ── reusable templates ──────────────────────────────────────────────────────
+
+TEMPLATE_KINDS = ("rulebook", "prompt", "rss", "keywords", "seo", "reddit", "pipeline")
+MAX_TEMPLATES = 100
+
+
+def list_templates(ws: str) -> list[dict]:
+    folder = sub_path(ws, "templates")
+    if not folder.is_dir():
+        return []
+    out = []
+    for path in sorted(folder.glob("*.json")):
+        item = read_json(path, None)
+        if isinstance(item, dict):
+            out.append({k: item.get(k) for k in ("id", "name", "kind", "description", "payload", "updated_at")})
+    return out
+
+
+def save_template(ws: str, template: dict) -> dict:
+    if not isinstance(template, dict):
+        raise StudioError("Template must be an object.")
+    tid = check_id(template.get("id") or _slugify(str(template.get("name") or "template")), "template id")
+    name = str(template.get("name") or tid).strip()[:100]
+    kind = str(template.get("kind") or "prompt")
+    if kind not in TEMPLATE_KINDS:
+        raise StudioError(f"Unknown template kind: {kind!r}.")
+    payload = template.get("payload")
+    if not isinstance(payload, (dict, list, str)):
+        raise StudioError("Template payload must be an object, list, or text.")
+    if len(json.dumps(payload, ensure_ascii=False)) > 200_000:
+        raise StudioError("Template payload is too large.")
+    existing = {x["id"] for x in list_templates(ws)}
+    if tid not in existing and len(existing) >= MAX_TEMPLATES:
+        raise StudioError(f"A workspace can have at most {MAX_TEMPLATES} templates.")
+    data = {"id": tid, "name": name, "kind": kind, "description": str(template.get("description") or "")[:300],
+            "payload": payload, "updated_at": now_iso()}
+    folder = sub_path(ws, "templates")
+    folder.mkdir(parents=True, exist_ok=True)
+    write_json(folder / f"{tid}.json", data)
+    return data
+
+
+def delete_template(ws: str, template_id: str) -> list[dict]:
+    tid = check_id(template_id, "template id")
+    path = sub_path(ws, "templates", f"{tid}.json")
+    if path.is_file():
+        path.unlink()
+    return list_templates(ws)
 
 
 def _check_url_text(value) -> str:

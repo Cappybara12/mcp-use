@@ -165,6 +165,7 @@ export function OutputView({ type, state }: { type: string; state: NodeState | u
         <div>
           <div className="primary-kw"><span className="label">Primary keyword</span>{out.primary}</div>
           {!out.has_volumes && <div className="note">This provider gives no search volumes. Use DataForSEO for real volume and difficulty.</div>}
+          {out.filters && <div className="muted small">Showing {out.filters.after} of {out.filters.before} candidates · intent: {out.filters.intent}{out.filters.min_volume ? ` · min volume: ${out.filters.min_volume}` : ''}{out.filters.max_difficulty != null ? ` · max difficulty: ${out.filters.max_difficulty}` : ''}</div>}
           <table className="mini-table">
             <thead><tr><th>Keyword</th><th>Volume</th><th>Difficulty</th><th>Intent</th><th>Score</th></tr></thead>
             <tbody>

@@ -37,7 +37,7 @@ one person can manage several.
 | Web research | Searches the web and reads the top pages. | TinyFish (optional; "Direct fetch" is free) |
 | Learn from your blog | Reads your published posts and measures how you write. | No (TinyFish optional for JavaScript-heavy sites) |
 | Rulebook | Supplies your rules and voice to the writing steps. | No |
-| Keyword research | Finds keywords and picks a primary one. | DataForSEO or TinyFish (optional; "Manual" is free) |
+| Keyword research | Finds keywords, classifies intent, filters the list, and picks a primary one. | DataForSEO or TinyFish (optional; "Manual" is free) |
 | Outline / Write draft | AI steps. Each has a prompt box for your own instructions. | An AI provider key (or the offline Demo AI) |
 | SEO check | Scores the draft (title, headings, keyword use, links, meta description, FAQ) and builds FAQ schema. | No |
 | Human review | Pauses the run so a person reads, edits, and approves or rejects. | No |
@@ -63,6 +63,35 @@ The **Learn from your blog** step reads up to 30 posts (found from a feed, a sit
 It turns these into plain rules, each with its evidence, saved to your rulebook. Rules are used twice: they are
 added to the writing prompts, and every draft is checked against them in the SEO step. Re-learning keeps your
 choices: rules you switched off, reworded, or added stay that way.
+
+## Getting better keyword research
+
+Use the Keyword research step as a decision aid, not as a command to repeat every phrase it finds. Start with a
+plain seed from the brief, such as `content calendar for SaaS`, then choose the source that matches the job:
+
+- **Manual** is best when a client already has a shortlist. Paste one phrase per line and no external key is needed.
+- **DataForSEO** is best when you need search volume, difficulty, and provider-supplied intent. Set a country and
+  language, then use minimum volume and maximum difficulty to keep the list commercially realistic.
+- **TinyFish** is best for discovering language and related questions from pages that rank. It does not provide
+  reliable volume or difficulty, so use the result as an ideas and SERP-pattern list, then validate important terms
+  with DataForSEO or the client's own analytics.
+
+You can filter every result by **informational**, **commercial**, **transactional**, or **navigational** intent and
+exclude phrases one per line, for example a competitor name, the wrong country, or an irrelevant product. When a
+provider does not return intent, Studio uses a visible phrase-based fallback classifier. The result shows how many
+candidates survived the filters, and the top ten are added to the Content planner as ideas. Choose the primary keyword
+from that shortlist before running Outline and Write.
+
+For a ghostwriter or agency, create one workspace per client or publication. Keep the client voice and constraints in
+the Rulebook, use a client-specific keyword template, and keep the API keys in Settings & keys. Save a configured
+keyword step as a reusable template, export templates for backup, or import the same template into another workspace.
+Templates contain settings and prompts, never API keys. A practical client workflow is:
+
+`brief → keyword research → choose primary → topic → research → rulebook → outline → write → SEO → human review → PR`
+
+The Rulebook is where reusable SEO requirements belong today: target length, title and heading patterns, sources,
+FAQ, calls to action, tone, and forbidden phrases. The SEO step checks those rules after writing. This keeps the same
+editorial contract usable across different keyword lists and clients.
 
 ## Providers
 

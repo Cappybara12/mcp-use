@@ -29,6 +29,7 @@ class _HTMLDoc(HTMLParser):
         self.bold = 0
         self.lists = 0
         self.images = 0
+        self.tables = 0
         self._skip = 0
         self._tag = ""
         self._buf: list[str] = []
@@ -67,6 +68,8 @@ class _HTMLDoc(HTMLParser):
             self.lists += 1
         elif tag == "img":
             self.images += 1
+        elif tag == "table":
+            self.tables += 1
         elif tag == "a" and a.get("href"):
             self._href, self._link_buf = a["href"], []
 
@@ -175,7 +178,7 @@ def parse_html(source: str, page_url: str = "") -> dict:
         "title": title, "description": parser.description, "canonical": parser.canonical,
         "headings": parser.headings, "paragraphs": parser.paragraphs, "text": text, "words": words_in(text),
         "internal_links": internal, "external_links": external,
-        "bold": parser.bold, "lists": parser.lists, "images": parser.images,
+        "bold": parser.bold, "lists": parser.lists, "images": parser.images, "tables": parser.tables,
         "jsonld_types": sorted(set(types)), "has_faq_schema": "FAQPage" in types,
         "faq_pairs": faq_pairs,
         "has_faq_heading": any(_FAQ_HEADING.match(t) for lvl, t in parser.headings if lvl <= 2),
@@ -235,6 +238,12 @@ def parse_markdown(source: str, page_url: str = "") -> dict:
         else:
             para.append(line.strip())
     flush()
+    tables = 0
+    prose = re.sub(r"```.*?```", "", body, flags=re.S)           # a table inside a code block is not a table
+    rows = prose.splitlines()
+    for i in range(len(rows) - 1):
+        if "|" in rows[i] and re.match(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$", rows[i + 1]):
+            tables += 1
     bold = len(re.findall(r"\*\*[^*\n]+\*\*", body))
     images = len(re.findall(r"!\[[^\]]*\]\([^)]+\)", body))
     host = urllib.parse.urlparse(page_url).netloc.lower().removeprefix("www.")
@@ -259,7 +268,7 @@ def parse_markdown(source: str, page_url: str = "") -> dict:
     return {
         "title": h1, "description": "", "canonical": "", "headings": headings, "paragraphs": paragraphs,
         "text": text, "words": words_in(text), "internal_links": internal, "external_links": external,
-        "bold": bold, "lists": lists, "images": images, "jsonld_types": [], "has_faq_schema": False,
+        "bold": bold, "lists": lists, "images": images, "tables": tables, "jsonld_types": [], "has_faq_schema": False,
         "faq_pairs": pairs, "has_faq_heading": any(_FAQ_HEADING.match(t) for lvl, t in headings if lvl <= 2),
     }
 

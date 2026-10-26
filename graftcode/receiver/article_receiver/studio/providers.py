@@ -177,3 +177,8 @@ def github_open_pr(token: str, repo: str, base_branch: str, branch: str, path: s
         {"message": title[:200], "content": base64.b64encode(content.encode()).decode(), "branch": branch})
     pr = _gh(token, "POST", f"/repos/{repo}/pulls", {"title": title[:200], "head": branch, "base": base_branch, "body": body[:4000]})
     return {"url": pr.get("html_url", ""), "number": pr.get("number"), "branch": branch}
+
+
+def github_whoami(token: str) -> str:
+    """The login the token belongs to (used to check a token works)."""
+    return str(_gh(token, "GET", "/user").get("login", ""))

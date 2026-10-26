@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Eye, Play, RotateCcw, Trash2, X } from 'lucide-react'
+import { Eye, KeyRound, Play, RotateCcw, Trash2, X } from 'lucide-react'
 import { OutputView } from './OutputView'
-import type { Catalog, NodeField, NodeState, NodeTypeInfo, PromptPreview, SecretInfo, WorkspaceConfig } from './types'
+import type { Catalog, NodeField, NodeState, NodeTypeInfo, PromptPreview, SecretInfo, Template, WorkspaceConfig } from './types'
 
 interface Props {
   info: NodeTypeInfo
@@ -11,6 +11,7 @@ interface Props {
   catalog: Catalog
   secrets: SecretInfo[]
   wsConfig: WorkspaceConfig
+  templates: Template[]
   canRun: boolean
   busy: boolean
   onChange: (config: Record<string, any>) => void
@@ -20,15 +21,38 @@ interface Props {
   onRunFrom: () => void
   onPreview: () => Promise<PromptPreview | null>
   onGoToKeys: () => void
+  onSaveTemplate: (template: Partial<Template> & Pick<Template, 'name' | 'kind' | 'payload'>) => Promise<void>
 }
 
 export function NodeDrawer(p: Props) {
   const [tab, setTab] = useState<'settings' | 'result' | 'prompt'>('settings')
   const [preview, setPreview] = useState<PromptPreview | null>(null)
   const [previewing, setPreviewing] = useState(false)
+  const [templateId, setTemplateId] = useState('')
+  const [templateName, setTemplateName] = useState('')
 
   const set = (key: string, value: unknown) => p.onChange({ ...p.config, [key]: value })
   const effectiveLlm = (p.config.provider as string) || p.wsConfig.default_provider || 'demo'
+
+  // Keep the key guidance visible before a user reaches a provider-specific field.
+  // Some nodes have an optional provider, so only show a hard requirement when the
+  // current configuration actually selects the keyed mode.
+  const keyRequirements = (() => {
+    const providers = new Set<string>()
+    for (const f of p.info.fields) {
+      if (f.type !== 'key_slot') continue
+      const provider = f.keyProviderFrom ? String(p.config[f.keyProviderFrom] ?? '') : (f.keyProvider ?? effectiveLlm)
+      if (!provider || ['demo', 'sample', 'manual', 'direct'].includes(provider)) continue
+      if (provider === 'tinyfish' && ['sample', 'direct'].includes(String(p.config.provider ?? ''))) continue
+      if (provider === 'github' && String(p.config.mode ?? 'dry_run') !== 'github_pr') continue
+      providers.add(provider)
+    }
+    return [...providers].map(provider => ({
+      provider,
+      label: provider === 'github' ? 'GitHub token' : `${provider[0].toUpperCase()}${provider.slice(1)} API key`,
+      saved: p.secrets.some(s => s.provider === provider),
+    }))
+  })()
 
   const renderField = (f: NodeField) => {
     const value = p.config[f.key] ?? p.info.defaults[f.key] ?? f.default ?? ''
@@ -79,6 +103,18 @@ export function NodeDrawer(p: Props) {
     setPreviewing(false)
   }
 
+  const templateKind = p.info.ai ? 'prompt' : p.info.type
+  const templates = p.templates.filter(t => t.kind === templateKind)
+  const applyTemplate = () => {
+    const template = templates.find(t => t.id === templateId)
+    if (template && template.payload && typeof template.payload === 'object') p.onChange({ ...p.config, ...template.payload })
+  }
+  const saveTemplate = async () => {
+    if (!templateName.trim()) return
+    await p.onSaveTemplate({ name: templateName.trim(), kind: templateKind as Template['kind'], description: `Saved from the ${p.info.label} step.`, payload: p.config })
+    setTemplateName('')
+  }
+
   return (
     <aside className="drawer">
       <div className="drawer-head">
@@ -98,6 +134,39 @@ export function NodeDrawer(p: Props) {
       <div className="drawer-body">
         {tab === 'settings' && (
           <div>
+            <div className="field check-field node-enabled">
+              <label><input type="checkbox" checked={p.config.enabled !== false} onChange={e => set('enabled', e.target.checked)} /> Enabled</label>
+              <div className="field-help">Turn this step off to skip it while keeping it in the pipeline. The rest of the connected flow will continue.</div>
+            </div>
+            {keyRequirements.length > 0 && (
+              <div className={`key-guide ${keyRequirements.every(k => k.saved) ? 'ok' : ''}`}>
+                <div className="key-guide-title"><KeyRound size={14} /> This step uses an external service</div>
+                {keyRequirements.map(k => <div key={k.provider} className="key-guide-row">
+                  <span><strong>{k.label}</strong> {k.saved ? <span className="muted">is saved</span> : <span className="warn-text">is not saved</span>}</span>
+                  {!k.saved && <button className="link" onClick={p.onGoToKeys}>Add it in Settings &amp; keys</button>}
+                </div>)}
+                <div className="field-help">Keys stay on this computer and are only sent to the provider selected for this step. You can use the offline/demo or direct-fetch options where available.</div>
+              </div>
+            )}
+            {templates.length > 0 && (
+              <div className="template-box">
+                <div className="field-label">Use a saved template</div>
+                <div className="row">
+                  <select className="grow" value={templateId} onChange={e => setTemplateId(e.target.value)}>
+                    <option value="">Choose a {templateKind} template…</option>
+                    {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                  <button className="btn-secondary small" onClick={applyTemplate} disabled={!templateId}>Apply</button>
+                </div>
+                <div className="field-help">Applying a template updates this step’s settings. You can still edit them afterward.</div>
+              </div>
+            )}
+            <div className="template-box compact">
+              <div className="field-label">Save these settings as a template</div>
+              <div className="row"><input className="grow" placeholder={`e.g. My ${p.info.label} setup`} value={templateName} onChange={e => setTemplateName(e.target.value)} />
+                <button className="btn-secondary small" onClick={() => void saveTemplate()} disabled={!templateName.trim()}>Save template</button></div>
+              <div className="field-help">Templates are stored in this workspace and can be reused by you or exported from Settings.</div>
+            </div>
             {p.info.fields.length === 0 && <div className="empty">This step has no settings.</div>}
             {p.info.fields.map(renderField)}
           </div>
@@ -105,7 +174,14 @@ export function NodeDrawer(p: Props) {
         {tab === 'result' && <OutputView type={p.info.type} state={p.state} />}
         {tab === 'prompt' && (
           <div>
-            <div className="field-help">This is exactly what the AI is sent. Your instructions go into “Additional instructions”; the rulebook, keywords and research are added automatically.</div>
+            <div className="field-help">The system prompt, rulebook, keywords and research are generated automatically. Add your own instructions below; they are appended to the AI prompt and saved with this node.</div>
+            <div className="field">
+              <label className="field-label" htmlFor={`prompt-${p.nodeId}`}>Additional instructions</label>
+              <textarea id={`prompt-${p.nodeId}`} rows={7} value={String(p.config.prompt ?? '')}
+                placeholder="For Reddit: lead with one useful insight, avoid hype, disclose ownership, and do not put the link in the main post."
+                onChange={e => set('prompt', e.target.value)} />
+              <div className="field-help">Changes save automatically. The Prompt preview below shows the combined instructions sent to the model.</div>
+            </div>
             <button className="btn-secondary" onClick={doPreview} disabled={previewing}><Eye size={14} /> {previewing ? 'Building…' : 'Preview prompt'}</button>
             {preview && (
               <div className="prompt-preview">

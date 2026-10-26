@@ -3,7 +3,7 @@ import { Background, BackgroundVariant, Controls, Handle, Position, ReactFlow, R
 import type { Connection, Edge, Node, NodeProps } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import {
-  CheckCircle2, Gauge, Globe, GitPullRequest, Library, ListOrdered, MessageSquare, PenLine, Play, Plus, Rss, ScrollText, Search, Target, UserCheck, AlertTriangle, Hand, Loader2,
+  CheckCircle2, Gauge, Globe, GitPullRequest, Library, ListOrdered, MessageSquare, PenLine, Play, Plus, Redo2, Rss, ScrollText, Search, Target, Undo2, UserCheck, AlertTriangle, Hand, Loader2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { studio } from './api'
@@ -14,6 +14,7 @@ import type { NodeState, NodeTypeInfo, PlanItem, Pipeline, Run } from './types'
 
 type StudioNodeData = { ntype: string; config: Record<string, any> }
 type SNode = Node<StudioNodeData, 'studio'>
+type CanvasSnapshot = { nodes: SNode[]; edges: Edge[] }
 
 const ICONS: Record<string, LucideIcon> = {
   topic: Target, rss: Rss, scrape: Globe, corpus: Library, rulebook: ScrollText, keywords: Search, outline: ListOrdered,
@@ -52,9 +53,10 @@ function StudioNodeCard({ id, data }: NodeProps<SNode>) {
   const info = infos[data.ntype]
   const state = run?.nodes[id]
   const status = state?.status ?? 'pending'
+  const enabled = data.config.enabled !== false
   const Icon = ICONS[data.ntype] ?? Target
   return (
-    <div className={`snode ${status} ${selected === id ? 'selected' : ''} ${info?.ai ? 'ai' : ''}`}>
+    <div className={`snode ${status} ${selected === id ? 'selected' : ''} ${info?.ai ? 'ai' : ''} ${enabled ? '' : 'disabled'}`}>
       <Handle type="target" position={Position.Left} />
       <div className="snode-top">
         <span className="snode-icon"><Icon size={15} /></span>
@@ -70,7 +72,7 @@ function StudioNodeCard({ id, data }: NodeProps<SNode>) {
       {status !== 'pending' && (
         <div className="snode-foot">
           {status === 'running' && 'Running…'}
-          {status === 'done' && duration(state)}
+          {status === 'done' && `Done${duration(state) ? ` · ${duration(state)}` : ''}`}
           {status === 'error' && 'Needs attention'}
           {status === 'awaiting_review' && 'Waiting for you'}
         </div>
@@ -130,6 +132,10 @@ function Canvas({ onGoToKeys }: { onGoToKeys: () => void }) {
   const [hintOpen, setHintOpen] = useState(true)
   const savedJson = useRef('')
   const loadedFor = useRef('')
+  const historyCurrent = useRef<CanvasSnapshot | null>(null)
+  const historyPast = useRef<CanvasSnapshot[]>([])
+  const historyFuture = useRef<CanvasSnapshot[]>([])
+  const [, setHistoryVersion] = useState(0)
 
   const infos = useMemo(() => Object.fromEntries((catalog?.nodes ?? []).map(n => [n.type, n])), [catalog])
   const groups = useMemo(() => {
@@ -156,6 +162,10 @@ function Canvas({ onGoToKeys }: { onGoToKeys: () => void }) {
         const rf = toRF(p)
         setBase(p); setNodes(rf.nodes); setEdges(rf.edges); setPlan(items)
         savedJson.current = JSON.stringify(fromRF(p, rf.nodes, rf.edges))
+        historyCurrent.current = { nodes: rf.nodes, edges: rf.edges }
+        historyPast.current = []
+        historyFuture.current = []
+        setHistoryVersion(v => v + 1)
         setSelected('')
         const last = runs.find(r => r.pipeline_id === pipelineId)
         setRun(last ? await studio.run(wsId, last.id) : null)
@@ -185,6 +195,67 @@ function Canvas({ onGoToKeys }: { onGoToKeys: () => void }) {
     }, 700)
     return () => window.clearTimeout(handle)
   }, [nodes, edges, base, wsId, fail, setNodes, setEdges])
+
+  // Keep a small local undo history for canvas edits. The timeout coalesces
+  // React Flow's separate node/edge updates into one undoable action.
+  useEffect(() => {
+    if (!base || !historyCurrent.current) return
+    const handle = window.setTimeout(() => {
+      const current: CanvasSnapshot = { nodes, edges }
+      const previous = historyCurrent.current
+      if (!previous) { historyCurrent.current = current; return }
+      if (JSON.stringify(current) === JSON.stringify(previous)) return
+      historyPast.current = [...historyPast.current.slice(-49), previous]
+      historyCurrent.current = current
+      historyFuture.current = []
+      setHistoryVersion(v => v + 1)
+    }, 0)
+    return () => window.clearTimeout(handle)
+  }, [nodes, edges, base])
+
+  const restoreSnapshot = useCallback((snapshot: CanvasSnapshot) => {
+    setNodes(snapshot.nodes)
+    setEdges(snapshot.edges)
+    setSelected('')
+  }, [setNodes, setEdges])
+
+  const undo = useCallback(() => {
+    const previous = historyPast.current.pop()
+    const current = historyCurrent.current
+    if (!previous || !current) return
+    historyFuture.current = [...historyFuture.current, current]
+    historyCurrent.current = previous
+    restoreSnapshot(previous)
+    setHistoryVersion(v => v + 1)
+  }, [restoreSnapshot])
+
+  const redo = useCallback(() => {
+    const next = historyFuture.current.pop()
+    const current = historyCurrent.current
+    if (!next || !current) return
+    historyPast.current = [...historyPast.current, current]
+    historyCurrent.current = next
+    restoreSnapshot(next)
+    setHistoryVersion(v => v + 1)
+  }, [restoreSnapshot])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      const editingText = target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')
+      if (editingText) return
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+        if (event.shiftKey) redo()
+        else undo()
+      } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'y') {
+        event.preventDefault()
+        redo()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [undo, redo])
 
   const onConnect = useCallback((c: Connection) => {
     if (!c.source || !c.target) return
@@ -345,6 +416,8 @@ function Canvas({ onGoToKeys }: { onGoToKeys: () => void }) {
               {(detail?.pipelines ?? []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
             <button className="btn-ghost small" onClick={newPipeline}><Plus size={13} /> New</button>
+            <button className="icon-btn tiny" onClick={undo} disabled={!historyPast.current.length} title="Undo (Ctrl/Cmd+Z)" aria-label="Undo"><Undo2 size={14} /></button>
+            <button className="icon-btn tiny" onClick={redo} disabled={!historyFuture.current.length} title="Redo (Ctrl/Cmd+Shift+Z)" aria-label="Redo"><Redo2 size={14} /></button>
             <span className="toolbar-sep" />
             <select value={planId} onChange={e => setPlanId(e.target.value)} aria-label="Run for">
               <option value="">Run for a topic I type…</option>
@@ -389,10 +462,13 @@ function Canvas({ onGoToKeys }: { onGoToKeys: () => void }) {
           <ReviewPanel ws={wsId} run={run} reviewNodeId={reviewNodeId} onDecided={afterReview} onClose={() => setReviewOpen(false)} />
         ) : selectedNode && infoFor && catalog && detail ? (
           <NodeDrawer key={selectedNode.id} info={infoFor} nodeId={selectedNode.id} config={selectedNode.data.config}
-            state={run?.nodes[selectedNode.id]} catalog={catalog} secrets={detail.secrets} wsConfig={detail.config}
-            canRun={itemChosen || !!run} busy={effectiveRunning}
+            state={run?.nodes[selectedNode.id]} catalog={catalog} secrets={detail.secrets} templates={detail.templates ?? []} wsConfig={detail.config}
+            // A Topic node can provide its own fallback topic. Let its drawer run
+            // when that field is filled, even if the top-toolbar run target is empty.
+            canRun={itemChosen || !!run || (selectedNode?.data.ntype === 'topic' && !!String(selectedNode.data.config.topic ?? '').trim())} busy={effectiveRunning}
             onChange={cfg => setConfig(selectedNode.id, cfg)} onClose={() => setSelected('')} onDelete={deleteSelected}
             onRunStep={() => runStep(false)} onRunFrom={() => runStep(true)} onGoToKeys={onGoToKeys}
+            onSaveTemplate={async template => { await studio.saveTemplate(wsId, template); await refreshDetail(); notify('Template saved to this workspace.') }}
             onPreview={async () => {
               try { return await studio.previewPrompt(wsId, pipelineId, selectedNode.id, run?.id ?? '') } catch (e) { fail(e); return null }
             }} />

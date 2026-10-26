@@ -209,3 +209,20 @@ def test_ideas_are_deduplicated(api, ws):
     api.add_idea(ws, "Same idea", "kw", "")
     api.add_idea(ws, "same IDEA", "kw", "")
     assert len(api.list_ideas(ws)) == 1
+
+
+def test_templates_roundtrip_and_delete(api, ws):
+    saved = api.save_template(ws, json.dumps({"name": "Goa RSS", "kind": "rss",
+                                               "description": "Travel feeds", "payload": {"urls": "https://example.com/feed"}}))
+    assert saved["kind"] == "rss" and saved["payload"]["urls"].startswith("https://")
+    assert api.workspace(ws)["templates"][0]["name"] == "Goa RSS"
+    assert api.delete_template(ws, saved["id"]) == []
+
+
+@pytest.mark.parametrize("bad", [
+    {"name": "x", "kind": "unknown", "payload": {}},
+    {"name": "x", "kind": "rss", "payload": None},
+])
+def test_template_validation(api, ws, bad):
+    with pytest.raises(StudioError):
+        api.save_template(ws, json.dumps(bad))

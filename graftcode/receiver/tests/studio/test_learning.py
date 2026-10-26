@@ -194,3 +194,30 @@ def test_long_tail_keywords_are_not_penalised_for_their_length():
     text = "# " + keyword.title() + "\n\n" + ("Plain filler words fill the page here. " * 60) + keyword + " matters. " + keyword + " again.\n"
     density = next(c for c in seo.check(text, keyword, {"rules": []})["checks"] if c["id"] == "kw_density")
     assert density["ok"], density            # 2 uses in about 400 words is natural, whatever the phrase length
+
+
+# ── tables ────────────────────────────────────────────────────────────────────
+
+def test_tables_are_counted_in_html_and_markdown():
+    html = "<html><body><article><h1>T</h1><p>" + "word " * 30 + "</p><table><tr><td>a</td></tr></table><table><tr><td>b</td></tr></table></article></body></html>"
+    assert docs.parse_html(html)["tables"] == 2
+    md = "# T\n\nIntro words here and there for the paragraph to count.\n\n| A | B |\n|---|---|\n| 1 | 2 |\n\nText.\n\n| C | D |\n| :-- | --: |\n| 3 | 4 |\n"
+    assert docs.parse_markdown(md)["tables"] == 2
+    assert docs.parse_markdown("# T\n\n```\n| A | B |\n|---|---|\n```\n\nPlain words only.\n")["tables"] == 0
+    assert docs.parse_markdown("# T\n\nA line with a | pipe but no table.\n")["tables"] == 0
+
+
+def _post(tables):
+    md = "# Post\n\nHave you wondered about this? " + "Plain words fill this post. " * 20 + ("\n\n| A | B |\n|---|---|\n| 1 | 2 |\n" * tables) + "\n"
+    return rulebook.analyze_post(docs.parse_markdown(md))
+
+
+def test_a_blog_that_uses_comparison_tables_gets_a_tables_rule():
+    learned = rulebook.learn([_post(1), _post(1), _post(0), _post(1)])
+    rule = next(r for r in learned["rules"] if r["id"] == "tables")
+    assert "comparison table" in rule["text"] and "3 of 4 posts (75%)" in rule["evidence"]
+    assert rule["kind"] == "note"                      # guidance for the writer, never a failing check
+
+
+def test_a_blog_without_tables_gets_no_tables_rule():
+    assert not any(r["id"] == "tables" for r in rulebook.learn([_post(0), _post(0), _post(0), _post(1), _post(0)])["rules"])

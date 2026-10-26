@@ -70,9 +70,21 @@ export interface WorkspaceDetail {
   id: string
   config: WorkspaceConfig
   secrets: SecretInfo[]
+  templates: Template[]
   pipelines: { id: string; name: string; nodes: number }[]
   rule_count: number
   plan_count: number
+}
+
+export type TemplateKind = 'rulebook' | 'prompt' | 'rss' | 'keywords' | 'seo' | 'reddit' | 'pipeline'
+
+export interface Template {
+  id: string
+  name: string
+  kind: TemplateKind
+  description: string
+  payload: any
+  updated_at: string
 }
 
 export interface PipelineNode {

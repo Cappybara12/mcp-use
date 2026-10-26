@@ -138,6 +138,11 @@ def run_node(ws: str, run_id: str, node_id: str) -> dict:
     ctx = Ctx(ws, run)
     state.update(status="running", error="", started_at=now_iso(), finished_at="", logs=[])
     store.save_run(ws, run)
+    if node.get("config", {}).get("enabled", True) is False:
+        state.update(status="done", output={}, logs=["Skipped: this step is disabled."], finished_at=now_iso())
+        _sync(ws, run, pipeline)
+        store.save_run(ws, run)
+        return run
     try:
         up = _upstream(run, pipeline, node_id)
         output = NODE_TYPES[node["type"]]["run"](ctx, node.get("config", {}), up)

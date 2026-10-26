@@ -17,6 +17,8 @@ export function RulebookView() {
   const [text, setText] = useState('')
   const [kind, setKind] = useState('note')
   const [phrases, setPhrases] = useState('')
+  const [templateId, setTemplateId] = useState('')
+  const [templateName, setTemplateName] = useState('')
   const saved = useRef('')
 
   const load = useCallback(async () => {
@@ -59,6 +61,19 @@ export function RulebookView() {
   const addRule = async () => {
     if (!text.trim()) return
     try { setRb(await studio.addRule(wsId, text.trim(), kind, phrases)); setText(''); setPhrases(''); void refreshDetail() } catch (e) { fail(e) }
+  }
+
+  const rulebookTemplates = (detail?.templates ?? []).filter(t => t.kind === 'rulebook')
+  const saveTemplate = async () => {
+    if (!rb || !templateName.trim()) return
+    try {
+      await studio.saveTemplate(wsId, { name: templateName.trim(), kind: 'rulebook', description: 'Saved from this workspace rulebook.', payload: rb })
+      setTemplateName(''); await refreshDetail(); notify('Rulebook template saved.')
+    } catch (e) { fail(e) }
+  }
+  const applyTemplate = () => {
+    const t = rulebookTemplates.find(x => x.id === templateId)
+    if (t?.payload && Array.isArray(t.payload.rules)) setRb(t.payload)
   }
 
   const stats = rb?.stats ?? {}
@@ -110,6 +125,22 @@ export function RulebookView() {
         </div>
         {kind === 'banned_phrases' && <input placeholder="Phrases, separated by commas: game-changer, synergy" value={phrases} onChange={e => setPhrases(e.target.value)} />}
         <button className="btn-secondary" onClick={addRule} disabled={!text.trim()}><Plus size={14} /> Add rule</button>
+      </div>
+
+      <div className="template-box">
+        <div className="field-label">Rulebook templates</div>
+        <div className="row">
+          <select className="grow" value={templateId} onChange={e => setTemplateId(e.target.value)}>
+            <option value="">Choose a saved rulebook…</option>
+            {rulebookTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          <button className="btn-secondary small" onClick={applyTemplate} disabled={!templateId}>Apply</button>
+        </div>
+        <div className="row" style={{ marginTop: 8 }}>
+          <input className="grow" placeholder="Name this rulebook for reuse" value={templateName} onChange={e => setTemplateName(e.target.value)} />
+          <button className="btn-secondary small" onClick={() => void saveTemplate()} disabled={!templateName.trim()} >Save current rulebook</button>
+        </div>
+        <div className="field-help">Rulebook templates include your enabled, disabled, learned, and custom rules. You can export them from Settings.</div>
       </div>
 
       {(rb?.sources ?? []).length > 0 && (
