@@ -18,6 +18,53 @@ directly. MCP is the Gateway's built-in endpoint, not a separate bridge.
 It was built for [Wayzyy](https://wayzyy.com)'s content engine. **You do not need that
 pipeline to run this repo:** without it the receiver runs in *demo mode* on bundled sample data.
 
+## How the pieces fit together
+
+The repository has one Python service and several ways to use it. The dashboard and Node
+client use the generated Graft over WebSocket; MCP-compatible clients use the Gateway's
+built-in HTTP endpoint. They all reach the same public Python methods.
+
+```mermaid
+flowchart LR
+    A[React dashboard] -->|generated Graft<br/>WebSocket :8080| G[Graftcode Gateway]
+    B[Node.js client] -->|generated Graft<br/>WebSocket :8080| G
+    C[Claude / Cursor] -->|MCP over HTTP<br/>/mcp :8081| G
+    G --> S[ArticlePipelineService<br/>plain Python methods]
+    S --> D[(Topics and drafts)]
+    S --> P[Optional real pipeline<br/>research, writing, publishing]
+```
+
+The important boundary is the Python service. The UI, scripts, and AI assistants are clients
+of the same service rather than separate copies of the content logic.
+
+## The content workflow
+
+The demo models an editorial workflow from an idea to a reviewable change. Sources and rules
+inform the draft, while the human review step remains the publishing gate.
+
+```mermaid
+flowchart LR
+    I[Topic queue] --> R[RSS and web research]
+    I --> K[Keyword research]
+    R --> O[Outline]
+    K --> O
+    B[Existing blog] --> L[Style and rulebook]
+    L --> O
+    O --> W[Write draft]
+    W --> E[SEO and style checks]
+    E --> H{Human review}
+    H -->|needs changes| W
+    H -->|approved| PR[Stage GitHub PR]
+    H -->|approved| X[Optional publisher]
+```
+
+The bundled receiver runs this flow in demo mode with sample data. Attaching the real article
+pipeline replaces the sample sources and placeholder writer with the project's live research,
+LLM, and publishing integrations.
+
+For the expanded diagrams and demo notes, see
+[`docs/architecture.md`](docs/architecture.md).
+
 ## What is real and what is demo
 
 | Method | With the real pipeline attached | Demo mode (default for new users) |
@@ -54,6 +101,18 @@ browser through the generated Graft (WebSocket).
 
 With the real pipeline attached, *Auto-Pilot Draft* calls LLM APIs, *Scan for New Topics* calls
 the search API, and *Stage PR* can open a real pull request. In demo mode none of these cost anything.
+
+## Suggested screenshots
+
+Screenshots are optional, but these four make the project easier to evaluate:
+
+1. **Pipeline overview:** Topic Queue, research, drafting, review, and GitHub staging.
+2. **Draft Studio:** a generated draft beside its style-check result.
+3. **Architecture:** the Graft/MCP comparison and the available MCP tools.
+4. **GitHub staging:** the branch and pull-request URL from a test repository.
+
+Place them in `docs/images/` and redact API keys, personal access tokens, private URLs, and
+unpublished customer content.
 
 Client settings (optional): `VITE_GRAFT_HOST` (default `ws://localhost:8080/ws`) and
 `VITE_GRAFT_MCP_URL` (default `http://localhost:8081/mcp`).
