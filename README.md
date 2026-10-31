@@ -1,63 +1,315 @@
-# Article Writer MCP
+# Python ↔ TypeScript with Graftcode: a content-pipeline demo
 
-An MCP server that runs a full content pipeline from Claude chat: finds
-trending topics in your niche, researches them for real facts, writes a
-full article in your brand voice, sources a licensed image, and can push
-the finished piece straight to your website's GitHub repo as a pull request.
+A Python service (an article-research-and-drafting pipeline) called directly from a
+TypeScript dashboard and a Node script through [Graftcode](https://graftcode.com), with
+**no REST layer**: no FastAPI routes, no Pydantic DTOs, no hand-written fetch client.
 
-Built for [Wayzyy](https://wayzyy.com), a Goa vacation rental marketplace —
-but the brand-specific bits are pulled into `config.yaml` so you can point
-this at your own blog/niche.
-
-## Setup
-
-1. `pip install -r requirements.txt`
-2. Copy `.env.example` to `.env` and fill in your API keys (OpenAI or Kimi, Groq, Firecrawl, Pexels, and GitHub for PR publishing)
-3. Edit `config.yaml` with your own brand name, blog URL, and site repo path
-4. Register the server in your Claude Desktop config, pointing at `mcp_server.py`
-
-## What's genericized vs. what still needs work
-
-`config.yaml` covers the structural stuff — brand name, blog URL, contact
-email, niche, and the closing CTA wording. That's enough to get the pipeline
-running for a different site without touching Python code.
-
-**Not yet genericized:** the deeper brand-voice content in `prompts/style_guide.py`
-and `prompts/article_format.py` (banned phrases, tone rules, article structure
-templates) and the site-specific TSX conversion logic in `agent/site_publisher.py`
-(built against Wayzyy's exact Vite/React blog format — a different site's blog
-will need its own version of that converter). Treat those as the files to
-rewrite for your own brand/site.
-
-## Tools
-
-- `run_scanner` — find trending topics via Google News RSS, deduped against what you've already published
-- `suggest_next_article` — ranked recommendations with real evidence
-- `write_article` — full pipeline: research → outline → write → image → style check → save
-- `get_draft` / `preview_draft` / `open_draft` — review the draft (text, rendered localhost page, or a real editor)
-- `run_style_check` — quality report
-- `edit_draft` — request changes, rewritten and saved automatically
-- `save_draft` — save edited text directly, no LLM call needed
-- `push_to_github` — converts to your site's format and opens a real PR for review
-
-## Graftcode demo
-
-[`graftcode/`](graftcode/) wraps this pipeline's methods in a Graftcode receiver, so a React
-dashboard, a Node script and MCP clients (Claude, Cursor) can all call the same Python methods
-with no REST layer. It runs on its own in a demo mode (bundled sample data, no API keys):
-
-```bash
-cd graftcode && bash scripts/start.sh
+```
+ Browser (React) ── generated Graft ── WebSocket ─┐
+ Node test script ─ generated Graft ──────────────┤
+                                                  ▼
+ Claude / Cursor ── MCP over HTTP ──────►  Graftcode Gateway ─► ArticlePipelineService (Python)
+                                           :8080 ws · :8081 /mcp   plain public methods
 ```
 
-To drive this real pipeline instead, point it at this folder (use an absolute path):
+There is no HTTP adapter: the browser imports the generated Graft and talks to the Gateway
+directly. MCP is the Gateway's built-in endpoint, not a separate bridge.
 
-```bash
-cd graftcode && WAYZYY_WRITER_DIR="$(cd .. && pwd)" bash scripts/start.sh
+It was built for [Wayzyy](https://wayzyy.com)'s content engine. **You do not need that
+pipeline to run this repo:** without it the receiver runs in *demo mode* on bundled sample data.
+
+## How the pieces fit together
+
+The repository has one Python service and several ways to use it. The dashboard and Node
+client use the generated Graft over WebSocket; MCP-compatible clients use the Gateway's
+built-in HTTP endpoint. They all reach the same public Python methods.
+
+```mermaid
+flowchart LR
+    A[React dashboard] -->|generated Graft<br/>WebSocket :8080| G[Graftcode Gateway]
+    B[Node.js client] -->|generated Graft<br/>WebSocket :8080| G
+    C[Claude / Cursor] -->|MCP over HTTP<br/>/mcp :8081| G
+    G --> S[ArticlePipelineService<br/>plain Python methods]
+    S --> D[(Topics and drafts)]
+    S --> P[Optional real pipeline<br/>research, writing, publishing]
 ```
 
-The `graftcode/` folder is MIT-licensed ([`graftcode/LICENSE`](graftcode/LICENSE)); that license covers
-that folder only.
+The important boundary is the Python service. The UI, scripts, and AI assistants are clients
+of the same service rather than separate copies of the content logic.
 
-See [`graftcode/README.md`](graftcode/README.md) for the architecture, the MCP setup, the YAML
-config that retargets it to another niche, and the known limits.
+## The content workflow
+
+The demo models an editorial workflow from an idea to a reviewable change. Sources and rules
+inform the draft, while the human review step remains the publishing gate.
+
+```mermaid
+flowchart LR
+    I[Topic queue] --> R[RSS and web research]
+    I --> K[Keyword research]
+    R --> O[Outline]
+    K --> O
+    B[Existing blog] --> L[Style and rulebook]
+    L --> O
+    O --> W[Write draft]
+    W --> E[SEO and style checks]
+    E --> H{Human review}
+    H -->|needs changes| W
+    H -->|approved| PR[Stage GitHub PR]
+    H -->|approved| X[Optional publisher]
+```
+
+The bundled receiver runs this flow in demo mode with sample data. Attaching the real article
+pipeline replaces the sample sources and placeholder writer with the project's live research,
+LLM, and publishing integrations.
+
+For the expanded diagrams and demo notes, see
+[`docs/architecture.md`](docs/architecture.md).
+
+## What is real and what is demo
+
+| Method | With the real pipeline attached | Demo mode (default for new users) |
+|---|---|---|
+| `getPipelineStatus` | Real provider/queue status | Reports demo mode and sample counts |
+| `listPendingTopics`, `getTopicSources` | Reads the scanner's review queue | Reads `receiver/sample_data/review` |
+| `listDrafts`, `getDraft`, `saveDraft` | Reads/writes the writer's drafts | Reads/writes `receiver/sample_data/drafts` |
+| `runStyleCheck` | Heuristic brand check on the draft text | Same |
+| `suggestNextArticle` | Ranks the real queue (keyword tiers + source count) | Ranks the sample queue |
+| `writeArticle` | Runs the full LLM research → outline → write pipeline | Writes a clearly labelled placeholder draft |
+| `runScanner` | Runs the scanner project's `main.py --scan` | Reports `skipped (demo mode)` |
+| `pushToGithub` | Opens a real GitHub PR | Raises an error (needs the pipeline) |
+
+## Pipeline Studio
+
+Beyond the original demo, the dashboard includes a visual **Pipeline Studio**: build a content pipeline from steps
+(RSS, web research, learn-from-your-blog rules, keyword research, outline, write, SEO check, human review, Reddit
+ideas, GitHub pull request), run it and watch each step finish, plan content on a calendar by drag and drop,
+schedule drafts with a GitHub Action, and manage several blogs with their own API keys. It works offline out of
+the box. See **[STUDIO.md](STUDIO.md)**.
+
+## The original dashboard
+
+Open <http://localhost:5173> after `start.sh`. It calls the Python receiver straight from the
+browser through the generated Graft (WebSocket).
+
+| Tab | What it exercises |
+|---|---|
+| Dashboard | `getPipelineStatus`, `listPendingTopics`, `listDrafts`, plus the live "Run topic scanner" and "Suggest next article" actions |
+| Topic Queue | `listPendingTopics`, `getTopicSources` (the sources modal) |
+| Draft Studio | `getDraft`, `saveDraft`, `writeArticle` (Auto-Pilot Draft), `runStyleCheck`, `pushToGithub` (Stage PR) |
+| Style Auditor | Result of `runStyleCheck` |
+| Architecture | Live benchmark of the same method through the Graft and through MCP, the live MCP tool list, and the known limits |
+
+With the real pipeline attached, *Auto-Pilot Draft* calls LLM APIs, *Scan for New Topics* calls
+the search API, and *Stage PR* can open a real pull request. In demo mode none of these cost anything.
+
+## Suggested screenshots
+
+Screenshots are optional, but these four make the project easier to evaluate:
+
+1. **Pipeline overview:** Topic Queue, research, drafting, review, and GitHub staging.
+2. **Draft Studio:** a generated draft beside its style-check result.
+3. **Architecture:** the Graft/MCP comparison and the available MCP tools.
+4. **GitHub staging:** the branch and pull-request URL from a test repository.
+
+Place them in `docs/images/` and redact API keys, personal access tokens, private URLs, and
+unpublished customer content.
+
+Client settings (optional): `VITE_GRAFT_HOST` (default `ws://localhost:8080/ws`) and
+`VITE_GRAFT_MCP_URL` (default `http://localhost:8081/mcp`).
+
+## Prerequisites
+
+- Python 3.10+ and Node 18+
+- PyYAML for the configuration file: `pip install -r receiver/requirements.txt`
+- The Graftcode Gateway (`gg`): <https://docs.graftcode.com/quick-start>
+
+## Run it
+
+```bash
+bash scripts/start.sh
+```
+
+This starts the gateway, installs the freshly generated graft package into `test-client/`
+and `ui/`, runs the Node → Python test, and starts the dashboard at <http://localhost:5173>.
+Graft Vision (the gateway's inspector) is at <http://localhost:8081>.
+
+```bash
+bash scripts/stop.sh        # stop everything
+bash scripts/start.sh --no-ui   # skip the dashboard
+```
+
+Run the Python tests (they use demo mode and need no network or keys):
+
+```bash
+cd receiver && pip install pytest && python -m pytest
+```
+
+## Make it yours: one config file
+
+Everything niche-specific lives in a YAML file, so the same receiver, Graft, MCP tools and
+dashboard can serve any blog. Copy [`receiver/config/wayzyy.yaml`](receiver/config/wayzyy.yaml),
+edit it, and point `PIPELINE_CONFIG` at it before starting:
+
+```bash
+PIPELINE_CONFIG=my-blog.yaml bash scripts/start.sh
+```
+
+| Section | What it controls |
+|---|---|
+| `brand` | Name and description (shown in the dashboard), the topic keyword the style check looks for, the fallback research prompt, and `niche` / `offering` / `offering_plural`, which the article pipeline uses in its prompts and closing call to action (set them, or a new niche inherits Wayzyy's) |
+| `categories` | How queue topics are grouped (first matching keyword rule wins, else `default`) |
+| `suggestion.tiers` | Which topic keywords the "suggest next article" ranking favours, highest priority first |
+| `style` | Banned words and openers, the attribution keyword (for example a stock-photo site), the publish threshold |
+| `data_dir` | Folder with `review/` and `drafts/` samples used in demo mode |
+
+Keys you leave out fall back to the built-in defaults, and a malformed file stops startup with a
+clear `Config error` message. A second, non-travel example is in
+[`receiver/config/examples/saas/`](receiver/config/examples/saas/config.yaml). Try it with no keys:
+
+```bash
+PIPELINE_CONFIG=receiver/config/examples/saas/config.yaml \
+WAYZYY_WRITER_DIR=/nonexistent WAYZYY_SCANNER_DIR=/nonexistent bash scripts/start.sh
+```
+
+The `editorial` and `editorial_rules` sections also let a project owner control the quality
+contract: minimum length, keyword frequency, required sections, source links, image attribution,
+human review, tone, required elements, and banned phrases. These rules are injected into the
+planner/writer prompts and enforced again by the receiver's style audit.
+
+### Keyword research for real teams
+
+Pipeline Studio is designed for more than a single blog owner. A ghostwriter, agency, or in-house content team can
+use one workspace per client and keep that client's voice in the Rulebook, while reusing the same pipeline shape.
+Keyword research supports four practical modes:
+
+- **Manual**: paste a client's approved terms, one per line, with no external key.
+- **TinyFish**: discover related wording and questions from pages that rank. This is useful for ideation, but it does
+  not supply dependable search volume or difficulty.
+- **DataForSEO**: retrieve volume, difficulty, and intent when prioritisation needs measurable SEO data.
+- **Sample**: try the complete flow offline before connecting a provider.
+
+The Keyword research settings let the user choose country and language, filter by search intent, set minimum volume
+or maximum difficulty, and exclude phrases such as a competitor, location, or irrelevant product. Provider intent is
+used when available; otherwise Studio makes a small, transparent phrase-based inference. The output reports how many
+candidates survived and adds the top ten to Content planner. The user then chooses the primary keyword before the
+outline and writing steps run.
+
+For repeat work, save the configured keyword step or Rulebook as a workspace template. Templates can be exported and
+imported between client workspaces, but they contain no API keys. Keep the keys in Settings & keys. The Rulebook is the
+shared quality contract for every client: voice, length, headings, source requirements, FAQ, calls to action, and banned
+phrases are used in prompts and checked again by SEO. The intended daily flow is:
+
+`brief → keyword shortlist → primary keyword → topic → research → rulebook → outline → draft → SEO → human review → PR`
+
+This makes the project useful as a client-facing ghostwriting tool as well as a Wayzyy-specific content engine: a user
+can change the inputs and editorial rules without rewriting the receiver or the Graft/MCP integration.
+
+The site publisher remains an adapter: `agent/site_publisher.py` currently targets Wayzyy's
+React/TSX blog shape. To publish to another site, keep the receiver and editorial config but
+replace that adapter for the target repository, then set `PUBLISHER_MODULE` and
+`PUBLISHER_FUNCTION` in `.env`. The adapter should return the same fields (`slug`, `branch`,
+`commit_hash`, `files_modified`, and `message`) so the dashboard can show the PR result.
+
+## Attach the real pipeline (optional)
+
+If you cloned this as the `graftcode/` folder of the `mcp-use` repo, the real pipeline is the
+parent folder. Attach it with an absolute path (the gateway runs from a different working directory):
+
+```bash
+WAYZYY_WRITER_DIR="$(cd .. && pwd)" bash scripts/start.sh
+```
+
+
+Copy `.env.example` and export the variables you need, for example `WAYZYY_WRITER_DIR`,
+`WAYZYY_SCANNER_DIR` and `WAYZYY_SITE_DIR`. The pipeline reads its own LLM and search keys
+from its own `.env`; this repo never stores secrets.
+
+## Use it from Claude or Cursor (MCP)
+
+The Gateway serves every public receiver method as an MCP tool at `http://localhost:8081/mcp`
+(JSON-RPC over HTTP with an `Mcp-Session-Id` session). Check it from a terminal:
+
+```bash
+bash scripts/mcp-check.sh
+```
+
+**Cursor** (`.cursor/mcp.json`):
+
+```json
+{ "mcpServers": { "graft-content-pipeline": { "url": "http://localhost:8081/mcp" } } }
+```
+
+**Claude Desktop** only speaks stdio, so bridge the endpoint with `mcp-remote`:
+
+```json
+{
+  "mcpServers": {
+    "graft-content-pipeline": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8081/mcp"]
+    }
+  }
+}
+```
+
+The Pipeline Studio adds `studio_*` tools; `studio_write_article` and `studio_decide` write and approve an article in
+one call each (see [STUDIO.md](STUDIO.md#use-it-from-claude-or-cursor-mcp)).
+
+MCP tool names are the Python method names (`suggest_next_article`, `write_article`, ...). Results
+come back as JSON text. The earlier hand-written FastMCP bridge is kept in `legacy/` as a
+"before" comparison only.
+
+## Verify it yourself
+
+- **No HTTP layer between the UI and Python:** `grep -rn "fetch(" ui/src` only finds the MCP
+  client in `ui/src/graft.ts`; there are no route handlers anywhere in the repo.
+- **MCP is built in:** `bash scripts/mcp-check.sh` lists the Gateway's tools with no extra process running.
+- **Latency:** open the dashboard's Architecture tab and press *Run 20 calls each*. It times the same
+  method through the Graft and through MCP on your machine. The numbers are local round trips only.
+
+## Layout
+
+```
+receiver/article_receiver/service.py   the Python receiver (plain class, public methods)
+receiver/config/                       default config and a non-travel example
+receiver/sample_data/                  demo-mode topics and drafts
+receiver/tests/                        pytest suite
+scripts/                               start.sh, stop.sh, run_gateway.sh, mcp-check.sh
+test-client/                           Node script calling the receiver through the graft
+ui/                                    Vite + React dashboard (calls the Gateway directly)
+legacy/                                the superseded FastMCP bridge (comparison only)
+```
+
+## Notes and limitations
+
+- **Typed returns.** The receiver defines dataclasses for its results, but with the Graftcode
+  Node SDK at the time of writing, object results reach Node as opaque handles (fields are not
+  readable as plain properties; lists are not arrays). The public methods therefore return
+  JSON strings, and the dataclasses serve as the schema.
+- **Package names and registry IDs change.** The generated package name and the registry ID
+  can differ per machine and per gateway restart, so `start.sh` reads them from the gateway log
+  and writes `graft-package.json` for the callers.
+- **Draft files are sandboxed.** Draft filenames must be plain names. Absolute paths, `..`, and symlinks that
+  resolve outside the drafts folder are rejected for every method that reads or writes a draft (regression
+  tests in `receiver/tests/test_security.py`). The gateway itself still has no authentication, so this
+  limits what a caller can reach but does not replace authentication.
+- **Quality gates are configurable.** `editorial.minimum_words`, `maximum_primary_keyword_uses`,
+  `required_sections`, `require_sources`, `require_image_attribution`, and `require_human_review`
+  are project-level controls. They produce audit flags; a human still decides whether to publish.
+  Every point the audit deducts comes with a recommendation. The keyword-frequency limit applies only when a
+  draft records its own `primary_keyword:` in its front matter, because the audit cannot know it otherwise.
+- **Security.** The gateway only allows `http://localhost:5173` by default (`GRAFT_CORS`), has
+  no authentication (including on `/mcp`), and `pushToGithub` can open PRs when configured. Do not expose it publicly.
+- **Typed returns in the browser too.** The same opaque-handle behaviour applies to the browser
+  SDK, so the dashboard also receives JSON strings and parses them.
+- **Dashboard shows "MCP: offline"?** The browser must be allowed to read the `Mcp-Session-Id`
+  header. `run_gateway.sh` writes a CORS config for `http://localhost:5173`; if you serve the
+  dashboard from another origin, set `GRAFT_CORS` and restart.
+- **Port already in use?** Run `bash scripts/stop.sh`, or change `GRAFT_PORT`, `GRAFT_VISION_PORT`.
+- **Python not found by the gateway?** Set `PY_HOME` to your Python prefix
+  (for example the python.org framework build) and re-run.
+
+## License
+
+[MIT](LICENSE). The Graftcode gateway (`gg`) and the generated Graft packages are
+Graftcode's own software and are governed by their terms; this repository does not redistribute them.
