@@ -125,6 +125,16 @@ Client settings (optional): `VITE_GRAFT_HOST` (default `ws://localhost:8080/ws`)
 
 ## Run it
 
+For the simplest local launch, run the wrapper from this folder:
+
+```bash
+bash scripts/start-studio.sh
+```
+
+It finds the local Graftcode Gateway, connects the parent article-writer pipeline when this
+folder is inside the `mcp-use` repository, and starts the Gateway, generated clients, and
+dashboard. Open <http://localhost:5173> when it finishes.
+
 ```bash
 bash scripts/start.sh
 ```
