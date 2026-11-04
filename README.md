@@ -19,6 +19,8 @@ It was built for [Wayzyy](https://wayzyy.com)'s content engine. **You do not nee
 pipeline to run this repo:** without it the receiver runs in *demo mode* on bundled sample data.
 
 ## How the pieces fit together
+Implementation video [MCPUSE](https://youtu.be/4-sPW87AkD0?si=fjUSuM1gHq90rZ0u)
+
 
 The repository has one Python service and several ways to use it. The dashboard and Node
 client use the generated Graft over WebSocket; MCP-compatible clients use the Gateway's
