@@ -1,5 +1,6 @@
 # Python ↔ TypeScript with Graftcode: a content-pipeline demo
 
+> **Graftcode Impact Programme:** this project is approved for participation in the [Graftcode Impact Programme](https://graftcode.com). 
 A Python service (an article-research-and-drafting pipeline) called directly from a
 TypeScript dashboard and a Node script through [Graftcode](https://graftcode.com), with
 **no REST layer**: no FastAPI routes, no Pydantic DTOs, no hand-written fetch client.
