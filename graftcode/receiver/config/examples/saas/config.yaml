@@ -47,4 +47,7 @@ editorial_rules:
   required_elements: [concrete examples, source links, implementation trade-offs]
   banned_phrases: ["in today's fast-paced world", "unlock the power of"]
 
+semantic:
+  brand_profile: "Practical articles for B2B SaaS teams about product analytics, metrics, dashboards and growth"
+
 data_dir: data

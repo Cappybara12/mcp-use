@@ -3,7 +3,8 @@
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MY_PGID="$(ps -o pgid= -p $$ | tr -d ' ')"
 
-for name in gateway ui; do
+# sie.pid exists only when start.sh started SIE itself (a server you started is left alone).
+for name in gateway ui sie; do
   pidfile="$ROOT/logs/$name.pid"
   [ -f "$pidfile" ] || continue
   pid="$(cat "$pidfile")"

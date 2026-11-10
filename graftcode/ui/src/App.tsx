@@ -22,6 +22,8 @@ import {
   ScrollText,
   Settings as SettingsIcon,
   X,
+  Search,
+  FlaskConical,
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import './studio/studio.css'
@@ -34,6 +36,9 @@ import { WorkspaceBar } from './studio/WorkspaceBar'
 import { GraftStrip } from './studio/GraftStrip'
 import { callGraft, mcpListTools } from './graft'
 import Architecture from './Architecture'
+import SemanticSearch from './SemanticSearch'
+import RelatedReads from './RelatedReads'
+import Evaluation from './Evaluation'
 
 interface Topic {
   id: string
@@ -42,6 +47,11 @@ interface Topic {
   category: string
   sources_count: number
   snippet: string
+  // Set only when the gateway reaches a Superlinked SIE server.
+  relevance: number | null
+  on_brand: boolean | null
+  covered_by: string
+  category_source: 'keyword' | 'sie' | 'default'
 }
 
 interface Draft {
@@ -70,7 +80,7 @@ interface RpcLog {
   status: 'ok' | 'err'
 }
 
-type Tab = 'studio' | 'planner' | 'rulebook' | 'settings' | 'overview' | 'queue' | 'writer' | 'auditor' | 'publisher' | 'architecture'
+type Tab = 'studio' | 'planner' | 'rulebook' | 'settings' | 'overview' | 'queue' | 'writer' | 'search' | 'evaluation' | 'auditor' | 'publisher' | 'architecture'
 
 const STUDIO_NAV = [
   { id: 'studio',   label: 'Pipeline',        icon: Network },
@@ -83,6 +93,8 @@ const SIDEBAR_NAV = [
   { id: 'overview',      label: 'Dashboard',       icon: LayoutDashboard },
   { id: 'queue',         label: 'Topic Queue',      icon: Flame },
   { id: 'writer',        label: 'Draft Studio',     icon: BookOpen },
+  { id: 'search',        label: 'Semantic Search',  icon: Search },
+  { id: 'evaluation',    label: 'Evaluation',       icon: FlaskConical },
   { id: 'auditor',       label: 'Style Auditor',    icon: ShieldCheck },
   { id: 'publisher',     label: 'GitHub Staging',   icon: GitPullRequest },
   { id: 'architecture',  label: 'Architecture',     icon: Code2 },
@@ -117,6 +129,7 @@ function Shell() {
   const [rpcLogs, setRpcLogs] = useState<RpcLog[]>([])
   const [mcpTools, setMcpTools] = useState<string[] | null>(null)
   const [catFilter, setCatFilter] = useState('All')
+  const [sortByRelevance, setSortByRelevance] = useState(false)
   const [prResult, setPrResult] = useState<any>(null)
   const [scanResult, setScanResult] = useState<any>(null)
   const [suggestion, setSuggestion] = useState<any>(null)
@@ -133,6 +146,9 @@ function Shell() {
       saveDraft: [body.filename ?? '', body.content ?? ''],
       runStyleCheck: [body.filename ?? ''],
       pushToGithub: [body.filename ?? ''],
+      compareSearchEngines: [body.query ?? '', body.limit ?? 3],
+      suggestRelatedLinks: [body.filename ?? '', body.limit ?? 3],
+      insertRelatedLinks: [body.filename ?? '', body.slugs ?? ''],
     }
     try {
       const { data } = await callGraft(method, ...(args[method] ?? []))
@@ -251,7 +267,11 @@ function Shell() {
   const brandName = status?.active_brand?.split(' (')[0] ?? 'Content Engine'
   const isStudioTab = tab === 'studio' || tab === 'planner' || tab === 'rulebook' || tab === 'settings'
 
-  const filtered = catFilter === 'All' ? topics : topics.filter(t => t.category === catFilter)
+  const hasRelevance = topics.some(t => t.relevance != null)
+  const byCategory = catFilter === 'All' ? topics : topics.filter(t => t.category === catFilter)
+  const filtered = sortByRelevance && hasRelevance
+    ? [...byCategory].sort((a, b) => (b.relevance ?? -1) - (a.relevance ?? -1))
+    : byCategory
 
   return (
     <div className="shell">
@@ -445,6 +465,9 @@ function Shell() {
                       <div style={{ color: 'var(--text-muted)', lineHeight: 1.5 }}>{suggestion.rationale}</div>
                       <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {suggestion.matched_signals?.map((k: string) => <span key={k} className="tag">{k}</span>)}
+                        {suggestion.relevance != null && (
+                          <span className="badge badge-green">SIE brand relevance {suggestion.relevance.toFixed(2)}</span>
+                        )}
                       </div>
                     </div>
                   )}
@@ -563,13 +586,39 @@ function Shell() {
                     }}
                   >{c}</button>
                 ))}
+                {hasRelevance && (
+                  <button
+                    onClick={() => setSortByRelevance(v => !v)}
+                    style={{
+                      marginLeft: 'auto', padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                      border: '1px solid var(--accent-border)', cursor: 'pointer',
+                      background: sortByRelevance ? 'var(--accent)' : 'var(--accent-light)',
+                      color: sortByRelevance ? '#fff' : 'var(--accent)',
+                    }}
+                  >Sort by brand relevance (SIE)</button>
+                )}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 14 }}>
                 {filtered.map(topic => (
-                  <div key={topic.id} className="topic-card">
+                  <div key={topic.id} className="topic-card" style={topic.on_brand === false || topic.covered_by ? { opacity: 0.6 } : undefined}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span className="badge badge-gray">{topic.category}</span>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <span className="badge badge-gray" title={topic.category_source === 'sie' ? 'Category chosen by Superlinked SIE (no keyword matched)' : undefined}>
+                          {topic.category}{topic.category_source === 'sie' ? ' · SIE' : ''}
+                        </span>
+                        {topic.relevance != null && (
+                          <span
+                            className={`badge ${topic.on_brand ? 'badge-green' : 'badge-amber'}`}
+                            title="Similarity to the brand profile, from Superlinked SIE embeddings"
+                          >
+                            {topic.on_brand ? 'On-brand' : 'Off-brand'} {topic.relevance.toFixed(2)}
+                          </span>
+                        )}
+                        {topic.covered_by && (
+                          <span className="badge badge-pink" title={`Already covered by ${topic.covered_by}`}>Already covered</span>
+                        )}
+                      </div>
                       <button
                         className="btn-ghost"
                         style={{ fontSize: 12, padding: '4px 8px' }}
@@ -703,6 +752,15 @@ function Shell() {
                   />
                 </div>
               </div>
+
+              {selectedDraft && (
+                <RelatedReads
+                  filename={selectedDraft}
+                  dirty={dirty}
+                  call={callGraftRpc}
+                  onInserted={() => loadDraft(selectedDraft)}
+                />
+              )}
             </div>
           )}
 
@@ -831,6 +889,10 @@ function Shell() {
           )}
 
           {/* ══════════ ARCHITECTURE ══════════ */}
+          {tab === 'search' && <SemanticSearch call={callGraftRpc} />}
+
+          {tab === 'evaluation' && <Evaluation call={callGraftRpc} />}
+
           {tab === 'architecture' && <Architecture statusLabel={status?.status} />}
 
         </div>

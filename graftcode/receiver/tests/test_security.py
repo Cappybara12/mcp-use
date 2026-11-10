@@ -95,3 +95,9 @@ def test_write_article_with_hostile_topic_stays_inside(service, drafts_dir, tmp_
     result = json.loads(service.write_article("../../../etc/passwd"))
     assert Path(result["saved_to"]).resolve().parent == drafts_dir.resolve()
     assert not (tmp_path / "etc").exists()
+
+
+def test_push_to_github_requires_exact_name(service):
+    from article_receiver import service as mod
+    with pytest.raises(ValueError, match="exact"):
+        mod._find_draft("sample-assagao", exact_only=True)

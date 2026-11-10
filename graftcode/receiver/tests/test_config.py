@@ -80,3 +80,27 @@ def test_invalid_config_gives_clear_error(service_with_config, tmp_path, bad):
 def test_missing_config_file_is_an_error(service_with_config, tmp_path):
     with pytest.raises(FileNotFoundError):
         service_with_config(tmp_path / "nope.yaml")
+
+
+def test_semantic_thresholds_must_be_numbers(tmp_path):
+    from article_receiver.service import _load_config
+    bad = tmp_path / "bad.yaml"
+    bad.write_text("semantic:\n  min_relevance: high\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="semantic.min_relevance"):
+        _load_config(bad)
+
+
+def test_link_template_needs_slug(tmp_path):
+    from article_receiver.service import _load_config
+    bad = tmp_path / "bad.yaml"
+    bad.write_text('semantic:\n  link_template: "/blog/"\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="link_template"):
+        _load_config(bad)
+
+
+def test_category_description_must_be_text(tmp_path):
+    from article_receiver.service import _load_config
+    bad = tmp_path / "bad.yaml"
+    bad.write_text("categories:\n  rules:\n    - {name: X, keywords: [x], description: [1]}\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="description"):
+        _load_config(bad)

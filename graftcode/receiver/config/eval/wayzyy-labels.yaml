@@ -1,0 +1,70 @@
+# Hand labels for the Evaluation page (evaluate_semantic_engine). Each entry is a real
+# topic title from the Wayzyy review queue with the answer a human editor would give:
+#   on_brand  - should a Goa travel / vacation-rental brand write about it?
+#   covered   - does one of the existing drafts already cover it?
+#   category  - the category it belongs in (names from `categories.rules` in wayzyy.yaml)
+# Labelled by hand on 2026-11-10 against the 9 drafts in the writer's drafts folder.
+# Edit freely: the page recomputes every metric from this file.
+labels:
+  # ── Stays & Villas ─────────────────────────────────────────────
+  - {topic: "villas in Goa", on_brand: true, covered: false, category: "Stays & Villas"}
+  - {topic: "Goa vacation rental", on_brand: true, covered: true, category: "Stays & Villas"}
+  - {topic: "where to stay in Goa", on_brand: true, covered: true, category: "Stays & Villas"}
+  - {topic: "Airbnb alternatives Goa", on_brand: true, covered: false, category: "Stays & Villas"}
+  - {topic: "Goa villa booking", on_brand: true, covered: false, category: "Stays & Villas"}
+  - {topic: "18 kid-friendly homestays in India for your next short break - Condé Nast Traveller India", on_brand: true, covered: false, category: "Stays & Villas"}
+  - {topic: "Arshad Warsi And Maria Goretti's 150-Year-Old Goa Villa Is Now Open For Travellers", on_brand: true, covered: false, category: "Stays & Villas"}
+  - {topic: "From ₹40,000 to ₹11,000 a night: Parul Gulati shares the reality of running a Goa Airbnb", on_brand: true, covered: false, category: "Stays & Villas"}
+  # ── Beaches ────────────────────────────────────────────────────
+  - {topic: "best beaches in Goa", on_brand: true, covered: false, category: "Beaches"}
+  - {topic: "Goa hidden beaches", on_brand: true, covered: false, category: "Beaches"}
+  - {topic: "South Goa beaches", on_brand: true, covered: false, category: "Beaches"}
+  # ── Food & Nightlife ───────────────────────────────────────────
+  - {topic: "Goa restaurants cafes", on_brand: true, covered: false, category: "Food & Nightlife"}
+  - {topic: "North Goa nightlife", on_brand: true, covered: false, category: "Food & Nightlife"}
+  # ── Trip Planning ──────────────────────────────────────────────
+  - {topic: "Goa itinerary", on_brand: true, covered: false, category: "Trip Planning"}
+  - {topic: "things to do in Goa", on_brand: true, covered: false, category: "Trip Planning"}
+  - {topic: "Goa budget trip", on_brand: true, covered: false, category: "Trip Planning"}
+  - {topic: "Goa family trip", on_brand: true, covered: false, category: "Trip Planning"}
+  - {topic: "Goa workation", on_brand: true, covered: false, category: "Trip Planning"}
+  - {topic: "Goa scooter rental", on_brand: true, covered: false, category: "Trip Planning"}
+  - {topic: "Goa travel guide", on_brand: true, covered: false, category: "Trip Planning"}
+  - {topic: "North Goa vs South Goa", on_brand: true, covered: false, category: "Trip Planning"}
+  # ── Culture & Festivals ────────────────────────────────────────
+  - {topic: "Goa launches 'Ekadasha Teertha Yatra' to promote spiritual tourism", on_brand: true, covered: true, category: "Culture & Festivals"}
+  - {topic: "Goa launches pilgrimage circuit traversing through 11 temples - The Times of India", on_brand: true, covered: true, category: "Culture & Festivals"}
+  - {topic: "Chikhal Kalo Festival 2026", on_brand: true, covered: false, category: "Culture & Festivals"}
+  - {topic: "Chikhal Kalo reflects Goa’s rich spiritual & cultural heritage: CM - navhindtimes.in", on_brand: true, covered: false, category: "Culture & Festivals"}
+  - {topic: "Goa Tourism, Aguad Port & Jail Complex Launch Monsoon Heritage Tourism Initiative", on_brand: true, covered: true, category: "Culture & Festivals"}
+  # ── Nature & Monsoon ───────────────────────────────────────────
+  - {topic: "Goa monsoon travel", on_brand: true, covered: false, category: "Nature & Monsoon"}
+  - {topic: "best time to visit Goa", on_brand: true, covered: false, category: "Nature & Monsoon"}
+  - {topic: "Green Hills to Waterfalls: 7 Reasons Goa Becomes Dream Destination During Monsoon", on_brand: true, covered: false, category: "Nature & Monsoon"}
+  - {topic: "Government eco-tourism to continue with safety protocols in place", on_brand: true, covered: false, category: "Nature & Monsoon"}
+  # ── Travel Rules & Access ──────────────────────────────────────
+  - {topic: "Goa Seeks Visa-on-Arrival, Open Sky Status to Boost Tourism", on_brand: true, covered: true, category: "Travel Rules & Access"}
+  - {topic: "Goa to get fast-track airport immigration after HM's nod: Khaunte", on_brand: true, covered: false, category: "Travel Rules & Access"}
+  - {topic: "Goa Tourism Declares 19 Activities as 'Nuisance'; Violators Face ₹1 Lakh Fine", on_brand: true, covered: false, category: "Travel Rules & Access"}
+  - {topic: "From beach parties to littering: 19 violations that could cost you Rs 1 lakh fine in Goa", on_brand: true, covered: false, category: "Travel Rules & Access"}
+  - {topic: "Goa eyes bigger charter season with new international markets", on_brand: true, covered: false, category: "Travel Rules & Access"}
+  - {topic: "Under 21 Years Of Age? You Cannot Enter The Gambling Zones Of Casinos In Goa - curlytales.com", on_brand: true, covered: false, category: "Travel Rules & Access"}
+  # ── Tourism & Property News ────────────────────────────────────
+  - {topic: "Goa gets Centre’s nod for six tourism infra projects in 2 yrs - ET TravelWorld", on_brand: true, covered: true, category: "Tourism & Property News"}
+  - {topic: "Wildflower Goa appoints Global Destinations as Representative for India - TravelBiz Monitor", on_brand: true, covered: true, category: "Tourism & Property News"}
+  - {topic: "Why more people are buying second homes in Goa: 5 reasons driving the trend", on_brand: true, covered: false, category: "Tourism & Property News"}
+  - {topic: "Beyond Tourism: What Is Driving the Real Estate Boom in Goa?", on_brand: true, covered: false, category: "Tourism & Property News"}
+  - {topic: "Planet Hotels Launches King's Mansion in Goa", on_brand: true, covered: false, category: "Tourism & Property News"}
+  - {topic: "W Goa Appoints New Director of Operations", on_brand: false, covered: false, category: "Tourism & Property News"}
+  - {topic: "The St. Regis Goa Resort Appoints New Head Chef - safariindia.com", on_brand: false, covered: false, category: "Tourism & Property News"}
+  - {topic: "MakeMyTrip Q1 Profit Drops 65% on Higher Finance Costs", on_brand: false, covered: false, category: "Tourism & Property News"}
+  # ── Local News (off-brand) ─────────────────────────────────────
+  - {topic: "Sattari drowning case bail", on_brand: false, covered: true, category: "Local News"}
+  - {topic: "Sanguem BJP dispute", on_brand: false, covered: false, category: "Local News"}
+  - {topic: "Dengue cases at South Goa District Hospital", on_brand: false, covered: false, category: "Local News"}
+  - {topic: "India gifts peacocks to UN Geneva", on_brand: false, covered: false, category: "Local News"}
+  - {topic: "Porvorim Rising academic achievers felicitation", on_brand: false, covered: false, category: "Local News"}
+  - {topic: "Tehelka founder Tarun Tejpal sentenced to 10 years in jail in 2013 rape case", on_brand: false, covered: false, category: "Local News"}
+  - {topic: "Two canoes capsize off Goa coast, 24 fishermen rescued", on_brand: false, covered: false, category: "Local News"}
+  - {topic: "Climate Study Reports Accelerated Global Warming Rate", on_brand: false, covered: false, category: "Local News"}
+  - {topic: "MP CM Mohan Yadav announces Rs 150 crore integrated tourism circuit for Kukru hill station", on_brand: false, covered: false, category: "Local News"}
