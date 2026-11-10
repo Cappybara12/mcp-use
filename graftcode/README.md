@@ -220,6 +220,38 @@ replace that adapter for the target repository, then set `PUBLISHER_MODULE` and
 `PUBLISHER_FUNCTION` in `.env`. The adapter should return the same fields (`slug`, `branch`,
 `commit_hash`, `files_modified`, and `message`) so the dashboard can show the PR result.
 
+## Optional: semantic search with Superlinked SIE
+
+With a [Superlinked SIE](https://github.com/superlinked/sie) server (open source, self-hosted, no API
+key) the pipeline compares texts by meaning instead of shared words. Install it once (needs
+Python 3.12):
+
+```bash
+python3.12 -m venv ~/.sie-venv && ~/.sie-venv/bin/pip install "sie-server[local]"
+```
+
+`scripts/start.sh` then starts it on port 8090 (or reuses one already running there) and stops it
+with `scripts/stop.sh`. Set `SIE_URL` to use another server, or `SIE=off` to skip it. Without SIE
+every feature below falls back to keyword matching, and the gateway log says why. Embeddings are
+cached in `.cache/sie-embeddings.json`, so only new or edited texts are embedded after a restart.
+`SIE_MODEL` picks the model (default `sentence-transformers/all-MiniLM-L6-v2`).
+
+What SIE adds (settings live in the config's `semantic:` section):
+
+| Where | What it does |
+|---|---|
+| **Semantic Search** tab | `compare_search_engines(query, limit)` shows keyword and SIE results side by side, with timings; `find_similar_articles(query, limit)` returns the closest drafts. |
+| **Suggest Best** | `suggest_next_article` skips **off-brand** topics (similarity to `brand_profile` below `min_relevance`) and topics an existing draft **already covers** (similarity to a draft's title of at least `covered_threshold`), and adds `relevance × relevance_weight` to the score. |
+| **Topic Queue** | `list_pending_topics` adds `relevance`, `on_brand`, `covered_by` and a **category**: keyword rules first, then the closest category `description` (at least `category_min_similarity`); off-brand topics go to `off_brand_category`. `category_source` says which decided. |
+| **Draft Studio → Related reads** | `suggest_related_links(filename, limit)` finds **published posts** (the site's `src/lib/blogPosts.ts`, located through `site_repo_path` in the writer's config or `site_posts_file`) to link, with their real `/blog/<slug>` URLs, skips the draft's own published copy, and flags near-duplicate titles. `insert_related_links(filename, slugs)` writes them as a `## Related reads` section. Only published posts are linked, so a live article never gets a 404 link. |
+| **Evaluation** tab | `evaluate_semantic_engine()` scores keyword matching against SIE on hand-labelled topics (`config/eval/wayzyy-labels.yaml`) for brand relevance, coverage and category, with a threshold sweep and every topic's answers. |
+
+On the 53 labelled Wayzyy topics: brand relevance 60% (keyword) vs 91% (SIE), category 76% vs 87%,
+and "already covered" 91% for both (SIE finds more of them, keyword is never wrong when it fires).
+Coverage compares topics with draft titles rather than full text: a short topic is loosely similar to
+every long article about the same place, so whole-text scores marked unrelated topics as covered.
+Re-run the Evaluation tab after changing a threshold or model.
+
 ## Attach the real pipeline (optional)
 
 If you cloned this as the `graftcode/` folder of the `mcp-use` repo, the real pipeline is the

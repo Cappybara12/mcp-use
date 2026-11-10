@@ -15,18 +15,39 @@ brand:
   # Prompt used when research is skipped. {topic} and {brand} are substituted.
   fallback_research_prompt: "Topic: {topic}. Write a comprehensive guide for {brand}'s audience based on your knowledge."
 
-# First rule whose keyword appears in the topic title wins; otherwise `default` is used.
+# First rule whose keyword appears in the topic title wins. With Superlinked SIE running, a topic no
+# keyword matches gets the category whose description it is closest in meaning to (see
+# semantic.category_min_similarity); otherwise `default` is used.
 categories:
   default: Guide
   rules:
+    - name: Stays & Villas
+      keywords: [villa, vacation rental, homestay, where to stay, airbnb]
+      description: "Where to stay in Goa: villas, vacation rentals, homestays, hotels, resorts and Airbnb alternatives"
     - name: Beaches
       keywords: [beach]
-    - name: Stays & Villas
-      keywords: [rental, villa]
-    - name: Food & Cafes
-      keywords: [food, cafe]
-    - name: Seasonal
-      keywords: [monsoon]
+      description: "Goa beaches: the best, quiet and hidden beaches in North and South Goa"
+    - name: Food & Nightlife
+      keywords: [food, cafe, restaurant, nightlife]
+      description: "Eating and going out in Goa: restaurants, cafes, food, bars, clubs and nightlife"
+    - name: Trip Planning
+      keywords: [itinerary, things to do, budget, family trip, workation, scooter, travel guide]
+      description: "Planning a Goa trip: itineraries, things to do, budgets, family trips, workations and getting around"
+    - name: Culture & Festivals
+      keywords: [temple, festival, heritage, pilgrimage, yatra]
+      description: "Goa culture and heritage: temples, churches, pilgrimages, festivals and local traditions"
+    - name: Nature & Monsoon
+      keywords: [monsoon, waterfall, eco-tourism, best time]
+      description: "Goa nature and seasons: monsoon travel, waterfalls, wildlife, eco-tourism and the best time to visit"
+    - name: Travel Rules & Access
+      keywords: [visa, flight, airport, charter, fine]
+      description: "Rules and access for visitors to Goa: visas, flights, airports, fines and safety rules for tourists"
+    - name: Tourism & Property News
+      keywords: [real estate, second home, appoints, investment]
+      description: "Goa tourism business and property news: tourism policy, hotel launches, hospitality appointments, real estate and second homes"
+    - name: Local News
+      keywords: [bjp, congress, court, bail, police]
+      description: "Local news unrelated to travel: politics, crime, court cases, accidents, health and schools"
 
 # Topic suggestions. Tiers are ordered highest priority first: a topic matching tier 1
 # scores 30, tier 2 scores 20, tier 3 scores 10, plus one point per trend source.
@@ -74,3 +95,30 @@ editorial_rules:
 
 # Optional: folder (relative to this file) with review/ and drafts/ used in demo mode.
 # data_dir: data
+
+# Optional: semantic checks with a self-hosted Superlinked SIE server (only used when SIE_URL
+# is set and reachable). Similarities are cosine scores between -1 and 1.
+semantic:
+  # What an on-brand article is about. Topics are compared against this text.
+  brand_profile: "Travel guide for tourists visiting Goa: where to stay, villas, beaches, food, things to do"
+  # Suggest skips topics less similar than this to the brand profile.
+  min_relevance: 0.25
+  # Suggest skips topics at least this similar to an existing draft's title (already covered).
+  covered_threshold: 0.75
+  # Points added per unit of relevance (relevance 0.4 adds 12).
+  relevance_weight: 30
+  # Related reads link to published posts in the site's blogPosts.ts. Empty means
+  # <site_repo_path from the writer's config.yaml>/src/lib/blogPosts.ts.
+  site_posts_file: ""
+  # A draft's text must be at least this similar to a post's title and description.
+  link_min_similarity: 0.6
+  # A draft title at least this similar to another title is flagged as a near-duplicate.
+  duplicate_threshold: 0.85
+  # Site URL of a post.
+  link_template: "/blog/{slug}"
+  # Topics no keyword rule matches get the closest category description when at least this similar.
+  category_min_similarity: 0.3
+  # Off-brand topics (below min_relevance) that no keyword rule matches go here. Empty to skip.
+  off_brand_category: "Local News"
+  # Hand-labelled topics for the Evaluation page (relative to this file).
+  eval_labels: "eval/wayzyy-labels.yaml"

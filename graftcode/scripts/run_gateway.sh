@@ -43,7 +43,7 @@ allowCredentials=false
 CORS
 
 # The receiver reads its configuration with PyYAML.
-python3 -c "import yaml" 2>/dev/null || { echo "PyYAML is required: pip install -r receiver/requirements.txt"; exit 1; }
+"${PYTHONHOME:+$PYTHONHOME/bin/}python3" -c "import yaml" 2>/dev/null || { echo "PyYAML is required: pip install -r receiver/requirements.txt"; exit 1; }
 
 # Niche configuration (brand, categories, suggestion keywords, style rules).
 # Defaults to the bundled Wayzyy config; point PIPELINE_CONFIG at your own YAML to retarget it.
@@ -66,6 +66,10 @@ if [ -z "${WAYZYY_SAMPLE_DIR:-}" ]; then
     export WAYZYY_SAMPLE_DIR="$ROOT/receiver/sample_data"
   fi
 fi
+# Optional Superlinked SIE embeddings are cached on disk so restarts stay fast.
+export SIE_CACHE_FILE="${SIE_CACHE_FILE:-$ROOT/.cache/sie-embeddings.json}"
+[ -n "${SIE_URL:-}" ] && echo "Using Superlinked SIE at $SIE_URL"
+
 cd "$ROOT/receiver"
 echo "Starting Graftcode Gateway hosting ArticlePipelineService..."
 exec "$GG" ./article_receiver/service.py \

@@ -18,6 +18,7 @@ venv/
 # generated per machine by scripts/start.sh
 graft-package.json
 logs/
+.cache/
 .DS_Store
 
 # drafts generated in demo mode (keep only the bundled sample)
