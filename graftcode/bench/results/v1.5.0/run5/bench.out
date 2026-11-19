@@ -1,0 +1,13 @@
+[GraftConfig] Configuration priority=RuntimeSpecificEnv source=environment variable=GRAFTCODE_CONFIG_PYPI_WAYZYY_ARTICLE_SERVICE - cannot be found
+[GraftConfig] Configuration priority=GlobalEnv source=environment variable=GRAFTCODE_CONFIG - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-wayzyy_article_service-config.json - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-wayzyy_article_service-config.yaml - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-wayzyy_article_service-config.txt - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.json - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.yaml - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.txt - cannot be found
+Adding config from source: name=@graft/pypi-wayzyy_article_service; runtime=python; host=ws://localhost:9180/ws; stateless=false with priority '6'
+Added configuration `@graft/pypi-wayzyy_article_service` with priority `6` and parameters {"runtime":5,"connectionData":{"_headers":{},"_hostname":"ws://localhost:9180/ws","_connectionType":2,"_responseTimeoutInSeconds":180},"isStateless":false,"plugins":"","modules":""}
+Retrieving config @graft/pypi-wayzyy_article_service
+Retrieved configuration `@graft/pypi-wayzyy_article_service` with priority `6` and parameters {"runtime":5,"connectionData":{"_headers":{},"_hostname":"ws://localhost:9180/ws","_connectionType":2,"_responseTimeoutInSeconds":180},"isStateless":false,"plugins":"","modules":""}
+{"pkg":"@graft/pypi-wayzyy_article_service_b3m8pn","started":"2026-11-15T22:44:32.863Z","N":2000,"CONC":16,"SECONDS":10,"graft_status_sequential":{"n":2000,"p50_ms":0.194,"p95_ms":0.273,"p99_ms":0.348,"mean_ms":0.213},"graft_list_drafts_sequential":{"n":500,"p50_ms":0.19,"p95_ms":0.254,"p99_ms":0.317,"mean_ms":0.202},"graft_status_throughput":{"concurrency":16,"seconds":10,"calls":58054,"errors":0,"calls_per_sec":5805.4,"n":58054,"p50_ms":2.668,"p95_ms":3.242,"p99_ms":4.486,"mean_ms":2.756},"mcp_tools":16,"mcp_status_sequential":{"n":500,"p50_ms":2.107,"p95_ms":3.107,"p99_ms":3.611,"mean_ms":2.209}}

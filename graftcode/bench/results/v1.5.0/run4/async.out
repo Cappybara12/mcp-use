@@ -1,0 +1,73 @@
+[GraftConfig] Configuration priority=RuntimeSpecificEnv source=environment variable=GRAFTCODE_CONFIG_PYPI_ASYNC_PROBE - cannot be found
+[GraftConfig] Configuration priority=GlobalEnv source=environment variable=GRAFTCODE_CONFIG - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.json - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.yaml - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.txt - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.json - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.yaml - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.txt - cannot be found
+Adding config from source: name=@graft/pypi-async_probe; runtime=python; host=ws://localhost:9182/ws; stateless=false with priority '6'
+Added configuration `@graft/pypi-async_probe` with priority `6` and parameters {"runtime":5,"connectionData":{"_headers":{},"_hostname":"ws://localhost:9182/ws","_connectionType":2,"_responseTimeoutInSeconds":180},"isStateless":false,"plugins":"","modules":""}
+Retrieving config @graft/pypi-async_probe
+Retrieved configuration `@graft/pypi-async_probe` with priority `6` and parameters {"runtime":5,"connectionData":{"_headers":{},"_hostname":"ws://localhost:9182/ws","_connectionType":2,"_responseTimeoutInSeconds":180},"isStateless":false,"plugins":"","modules":""}
+[GraftConfig] Configuration priority=RuntimeSpecificEnv source=environment variable=GRAFTCODE_CONFIG_PYPI_ASYNC_PROBE - cannot be found
+[GraftConfig] Configuration priority=GlobalEnv source=environment variable=GRAFTCODE_CONFIG - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.json - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.yaml - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.txt - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.json - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.yaml - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.txt - cannot be found
+Adding config from source: name=@graft/pypi-async_probe; runtime=python; host=ws://localhost:9182/ws; stateless=false with priority '6'
+[GraftConfig] Configuration priority=RuntimeSpecificEnv source=environment variable=GRAFTCODE_CONFIG_PYPI_ASYNC_PROBE - cannot be found
+[GraftConfig] Configuration priority=GlobalEnv source=environment variable=GRAFTCODE_CONFIG - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.json - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.yaml - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.txt - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.json - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.yaml - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.txt - cannot be found
+Adding config from source: name=@graft/pypi-async_probe; runtime=python; host=ws://localhost:9182/ws; stateless=false with priority '6'
+[GraftConfig] Configuration priority=RuntimeSpecificEnv source=environment variable=GRAFTCODE_CONFIG_PYPI_ASYNC_PROBE - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificEnv source=environment variable=GRAFTCODE_CONFIG_PYPI_ASYNC_PROBE - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificEnv source=environment variable=GRAFTCODE_CONFIG_PYPI_ASYNC_PROBE - cannot be found
+[GraftConfig] Configuration priority=GlobalEnv source=environment variable=GRAFTCODE_CONFIG - cannot be found
+[GraftConfig] Configuration priority=GlobalEnv source=environment variable=GRAFTCODE_CONFIG - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.json - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.json - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.yaml - cannot be found
+[GraftConfig] Configuration priority=GlobalEnv source=environment variable=GRAFTCODE_CONFIG - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.yaml - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.txt - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.txt - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.json - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.json - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.yaml - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.json - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.yaml - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.txt - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.txt - cannot be found
+Added configuration `@graft/pypi-async_probe` with priority `6` and parameters {"runtime":5,"connectionData":{"_headers":{},"_hostname":"ws://localhost:9182/ws","_connectionType":2,"_responseTimeoutInSeconds":180},"isStateless":false,"plugins":"","modules":""}
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.yaml - cannot be found
+[GraftConfig] Configuration priority=RuntimeSpecificFile source=file path=@graft/pypi-async_probe-config.txt - cannot be found
+Retrieving config @graft/pypi-async_probe
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.json - cannot be found
+Adding config from source: name=@graft/pypi-async_probe; runtime=python; host=ws://localhost:9182/ws; stateless=false with priority '6'
+Retrieved configuration `@graft/pypi-async_probe` with priority `6` and parameters {"runtime":5,"connectionData":{"_headers":{},"_hostname":"ws://localhost:9182/ws","_connectionType":2,"_responseTimeoutInSeconds":180},"isStateless":false,"plugins":"","modules":""}
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.yaml - cannot be found
+[GraftConfig] Configuration priority=GlobalFile source=file path=graftcode-config.txt - cannot be found
+Adding config from source: name=@graft/pypi-async_probe; runtime=python; host=ws://localhost:9182/ws; stateless=false with priority '6'
+Adding config from source: name=@graft/pypi-async_probe; runtime=python; host=ws://localhost:9182/ws; stateless=false with priority '6'
+Added configuration `@graft/pypi-async_probe` with priority `6` and parameters {"runtime":5,"connectionData":{"_headers":{},"_hostname":"ws://localhost:9182/ws","_connectionType":2,"_responseTimeoutInSeconds":180},"isStateless":false,"plugins":"","modules":""}
+Retrieving config @graft/pypi-async_probe
+Retrieved configuration `@graft/pypi-async_probe` with priority `6` and parameters {"runtime":5,"connectionData":{"_headers":{},"_hostname":"ws://localhost:9182/ws","_connectionType":2,"_responseTimeoutInSeconds":180},"isStateless":false,"plugins":"","modules":""}
+Added configuration `@graft/pypi-async_probe` with priority `6` and parameters {"runtime":5,"connectionData":{"_headers":{},"_hostname":"ws://localhost:9182/ws","_connectionType":2,"_responseTimeoutInSeconds":180},"isStateless":false,"plugins":"","modules":""}
+Retrieving config @graft/pypi-async_probe
+Retrieved configuration `@graft/pypi-async_probe` with priority `6` and parameters {"runtime":5,"connectionData":{"_headers":{},"_hostname":"ws://localhost:9182/ws","_connectionType":2,"_responseTimeoutInSeconds":180},"isStateless":false,"plugins":"","modules":""}
+Added configuration `@graft/pypi-async_probe` with priority `6` and parameters {"runtime":5,"connectionData":{"_headers":{},"_hostname":"ws://localhost:9182/ws","_connectionType":2,"_responseTimeoutInSeconds":180},"isStateless":false,"plugins":"","modules":""}
+Retrieving config @graft/pypi-async_probe
+Retrieved configuration `@graft/pypi-async_probe` with priority `6` and parameters {"runtime":5,"connectionData":{"_headers":{},"_hostname":"ws://localhost:9182/ws","_connectionType":2,"_responseTimeoutInSeconds":180},"isStateless":false,"plugins":"","modules":""}
+Added configuration `@graft/pypi-async_probe` with priority `6` and parameters {"runtime":5,"connectionData":{"_headers":{},"_hostname":"ws://localhost:9182/ws","_connectionType":2,"_responseTimeoutInSeconds":180},"isStateless":false,"plugins":"","modules":""}
+Retrieving config @graft/pypi-async_probe
+Retrieved configuration `@graft/pypi-async_probe` with priority `6` and parameters {"runtime":5,"connectionData":{"_headers":{},"_hostname":"ws://localhost:9182/ws","_connectionType":2,"_responseTimeoutInSeconds":180},"isStateless":false,"plugins":"","modules":""}
+{"pkg":"@graft/pypi-async_probe_j6ci4t","sync":{"calls":20,"wait_ms_each":200,"wall_ms":4098,"ideal_parallel_ms":200,"fully_serial_ms":4000,"failed":0,"returned_expected_value":true,"sample_value":"200","error":""},"async":{"calls":20,"wait_ms_each":200,"wall_ms":4051.1,"ideal_parallel_ms":200,"fully_serial_ms":4000,"failed":0,"returned_expected_value":true,"sample_value":"200","error":""},"async_multi_connection":{"processes":5,"calls":20,"wall_ms":1007.5,"per_process_wall_ms":[812.2,813.4,812.5,810.3,813.2],"failed":0,"fully_serial_ms":4000}}

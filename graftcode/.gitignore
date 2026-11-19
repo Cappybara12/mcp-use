@@ -32,3 +32,8 @@ studio_data/
 # Python packaging output
 build/
 *.egg-info/
+bench/.clients/
+bench/results/**/gateway.log
+bench/results/**/probe-gateway.log
+bench/results/**/sie-unused.json
+bench/results/trial*/

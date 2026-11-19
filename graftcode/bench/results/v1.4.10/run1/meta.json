@@ -1,0 +1,4 @@
+{ "label": "v1.4.10", "gateway_version": "1.4.10", "startup_to_ready_ms": 65544,
+  "rss_idle_kb": 21296, "rss_after_load_kb": 32304,
+  "machine": "Apple M5 / 16 GB",
+  "os": "26.4", "node": "v24.18.0", "python": "3.12" }
