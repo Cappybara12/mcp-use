@@ -1,0 +1,39 @@
+{
+  "pkg": "@graft/pypi-async_probe_j6ci4t",
+  "sync": {
+    "calls": 20,
+    "wait_ms_each": 200,
+    "wall_ms": 4102.6,
+    "ideal_parallel_ms": 200,
+    "fully_serial_ms": 4000,
+    "failed": 0,
+    "returned_expected_value": true,
+    "sample_value": "200",
+    "error": ""
+  },
+  "async": {
+    "calls": 20,
+    "wait_ms_each": 200,
+    "wall_ms": 4057.7,
+    "ideal_parallel_ms": 200,
+    "fully_serial_ms": 4000,
+    "failed": 0,
+    "returned_expected_value": true,
+    "sample_value": "200",
+    "error": ""
+  },
+  "async_multi_connection": {
+    "processes": 5,
+    "calls": 20,
+    "wall_ms": 1015.3,
+    "per_process_wall_ms": [
+      816.7,
+      816.8,
+      815.8,
+      816.9,
+      816.3
+    ],
+    "failed": 0,
+    "fully_serial_ms": 4000
+  }
+}

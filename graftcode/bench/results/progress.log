@@ -1,0 +1,24 @@
+== v1.4.10 run 1
+   version 1.4.10, ready in 65544 ms, RSS idle 20 MB, after load 31 MB
+== v1.5.0 run 1
+   version 1.5.0, ready in 68539 ms, RSS idle 119 MB, after load 130 MB
+== v1.4.10 run 2
+   version 1.4.10, ready in 22992 ms, RSS idle 23 MB, after load 33 MB
+== v1.5.0 run 2
+   version 1.5.0, ready in 22865 ms, RSS idle 26 MB, after load 38 MB
+== v1.4.10 run 3
+   version 1.4.10, ready in 7651 ms, RSS idle 94 MB, after load 93 MB
+== v1.5.0 run 3
+   version 1.5.0, ready in 7858 ms, RSS idle 102 MB, after load 102 MB
+== v1.4.10 run 4
+   version 1.4.10, ready in 5917 ms, RSS idle 93 MB, after load 93 MB
+== v1.5.0 run 4
+   version 1.5.0, ready in 5825 ms, RSS idle 97 MB, after load 97 MB
+== v1.4.10 run 5
+   version 1.4.10, ready in 6652 ms, RSS idle 94 MB, after load 93 MB
+== v1.5.0 run 5
+   version 1.5.0, ready in 5445 ms, RSS idle 98 MB, after load 98 MB
+== v1.4.10 run 6
+   version 1.4.10, ready in 5603 ms, RSS idle 92 MB, after load 92 MB
+== v1.5.0 run 6
+   version 1.5.0, ready in 5810 ms, RSS idle 98 MB, after load 98 MB

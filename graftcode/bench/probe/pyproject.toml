@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "async_probe"
+version = "1.0.0"
+description = "Benchmark receiver: the same wait written sync and async"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+include = ["async_probe*"]

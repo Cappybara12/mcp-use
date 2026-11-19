@@ -1,0 +1,21 @@
+{
+  "pkg": "@graft/pypi-async_probe_j6ci4t",
+  "sync": {
+    "calls": 20,
+    "wait_ms_each": 200,
+    "wall_ms": 4116.9,
+    "ideal_parallel_ms": 200,
+    "fully_serial_ms": 4000,
+    "failed": 0,
+    "error": ""
+  },
+  "async": {
+    "calls": 20,
+    "wait_ms_each": 200,
+    "wall_ms": 4117.1,
+    "ideal_parallel_ms": 200,
+    "fully_serial_ms": 4000,
+    "failed": 0,
+    "error": ""
+  }
+}

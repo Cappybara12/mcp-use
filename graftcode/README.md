@@ -220,6 +220,15 @@ replace that adapter for the target repository, then set `PUBLISHER_MODULE` and
 `PUBLISHER_FUNCTION` in `.env`. The adapter should return the same fields (`slug`, `branch`,
 `commit_hash`, `files_modified`, and `message`) so the dashboard can show the PR result.
 
+## Graftcode Stable (1.5.0)
+
+The project runs on Graftcode Gateway **1.5.0 (Stable)** and needs no code changes from 1.4.x.
+Install or update the gateway with `curl -fsSL https://grft.dev/get | sh` (macOS/Linux) or
+`iwr https://grft.dev/get | iex` (Windows). On the same machine, moving from 1.4.10 to 1.5.0
+made typed Node → Python calls 12.6% faster (p50 0.222 → 0.194 ms) and raised throughput 14.1%
+(5,218 → 5,952 calls/s at 16 callers), while MCP calls stayed the same. Method, caveats and the
+async results: [`bench/README.md`](bench/README.md).
+
 ## Optional: semantic search with Superlinked SIE
 
 With a [Superlinked SIE](https://github.com/superlinked/sie) server (open source, self-hosted, no API

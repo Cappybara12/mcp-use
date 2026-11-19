@@ -1,0 +1,41 @@
+{
+  "pkg": "@graft/pypi-wayzyy_article_service_b3m8pn",
+  "started": "2026-11-15T22:43:09.319Z",
+  "N": 2000,
+  "CONC": 16,
+  "SECONDS": 10,
+  "graft_status_sequential": {
+    "n": 2000,
+    "p50_ms": 0.194,
+    "p95_ms": 0.276,
+    "p99_ms": 0.347,
+    "mean_ms": 0.214
+  },
+  "graft_list_drafts_sequential": {
+    "n": 500,
+    "p50_ms": 0.189,
+    "p95_ms": 0.26,
+    "p99_ms": 0.304,
+    "mean_ms": 0.204
+  },
+  "graft_status_throughput": {
+    "concurrency": 16,
+    "seconds": 10,
+    "calls": 59959,
+    "errors": 0,
+    "calls_per_sec": 5995.9,
+    "n": 59959,
+    "p50_ms": 2.631,
+    "p95_ms": 2.933,
+    "p99_ms": 3.625,
+    "mean_ms": 2.669
+  },
+  "mcp_tools": 16,
+  "mcp_status_sequential": {
+    "n": 500,
+    "p50_ms": 2.147,
+    "p95_ms": 3.231,
+    "p99_ms": 3.944,
+    "mean_ms": 2.269
+  }
+}
